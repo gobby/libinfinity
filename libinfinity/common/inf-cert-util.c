@@ -34,6 +34,7 @@
 
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <glib/gstdio.h>
 
@@ -47,11 +48,39 @@
 #define X509_END_1   "-----END CERTIFICATE-----"
 #define X509_END_2   "-----END X509 CERTIFICATE----"
 
+typedef enum _InfCertUtilError {
+  INF_CERT_UTIL_ERROR_DUPLICATE_HOST_ENTRY
+} InfCertUtilError;
+
 /*
  * Helper functions
  */
 
 static const unsigned int DAYS = 24 * 60 * 60;
+
+/* memrchr does not seem to be available everywhere, so we implement it
+ * ourselves. */
+static void*
+inf_cert_util_memrchr(void* buf,
+                      char c,
+                      size_t len)
+{
+  char* pos;
+  char* end;
+
+  pos = buf + len;
+  end = buf;
+
+  while(pos >= end)
+  {
+    if(*(pos - 1) == c)
+      return pos - 1;
+    --pos;
+  }
+
+  return NULL;
+}
+
 
 static int
 inf_cert_util_create_certificate_impl(gnutls_x509_crt_t cert,
@@ -1020,6 +1049,246 @@ inf_cert_util_copy_certificate(gnutls_x509_crt_t src,
 }
 
 /**
+ * inf_cert_util_read_certificate_map:
+ * @filename: The filename to read the certificate map from.
+ * @error: Location to store error information, if any.
+ *
+ * Reads a certificate map, i.e. a mapping from hostname to certificate,
+ * from the given file. The format of the file is expected to be one entry
+ * per line, where each entry consists of the hostname, then a colon
+ * character (':'), and then the base64-encoded certificate in DER format.
+ *
+ * If the file with the given filename does not exist, an empty hash table
+ * is returned and the function succeeds.
+ *
+ * Returns: (transfer container) (element-type string gnutls_x509_crt_t):
+ * A hash table with the read mapping, or %NULL on error. Use
+ * g_hash_table_unref() to free the hash table when no longer needed.
+ */
+GHashTable*
+inf_cert_util_read_certificate_map(const gchar* filename,
+                                   GError** error)
+{
+  GHashTable* table;
+  gchar* content;
+  gsize size;
+  GError* local_error;
+
+  gchar* out_buf;
+  gsize out_buf_len;
+  gchar* pos;
+  gchar* prev;
+  gchar* next;
+  gchar* sep;
+
+  gsize len;
+  gsize out_len;
+  gint base64_state;
+  guint base64_save;
+
+  gnutls_datum_t data;
+  gnutls_x509_crt_t cert;
+  int res;
+
+  table = g_hash_table_new_full(
+    g_str_hash,
+    g_str_equal,
+    g_free,
+    (GDestroyNotify)gnutls_x509_crt_deinit
+  );
+
+  local_error = NULL;
+  g_file_get_contents(filename, &content, &size, &local_error);
+  if(local_error != NULL)
+  {
+    if(local_error->domain == G_FILE_ERROR &&
+       local_error->code == G_FILE_ERROR_NOENT)
+    {
+      return table;
+    }
+
+    g_propagate_error(error, local_error);
+    g_hash_table_destroy(table);
+    return NULL;
+  }
+
+  out_buf = NULL;
+  out_buf_len = 0;
+  prev = content;
+  for(prev = content; prev != NULL; prev = next)
+  {
+    pos = strchr(prev, '\n');
+    next = NULL;
+
+    if(pos == NULL)
+      pos = content + size;
+    else
+      next = pos + 1;
+
+    sep = inf_cert_util_memrchr(prev, ':', pos - prev);
+    if(sep == NULL) continue; /* ignore line */
+
+    *sep = '\0';
+    if(g_hash_table_lookup(table, prev) != NULL)
+    {
+      g_set_error(
+        error,
+        g_quark_from_static_string("INF_CERT_UTIL_ERROR"),
+        INF_CERT_UTIL_ERROR_DUPLICATE_HOST_ENTRY,
+        _("Certificate for host \"%s\" appears twice"),
+        prev
+      );
+
+      g_hash_table_destroy(table);
+      g_free(out_buf);
+      g_free(content);
+      return NULL;
+    }
+
+    /* decode base64, import DER certificate */
+    len = (pos - (sep + 1));
+    out_len = len * 3 / 4;
+
+    if(out_len > out_buf_len)
+    {
+      out_buf = g_realloc(out_buf, out_len);
+      out_buf_len = out_len;
+    }
+
+    base64_state = 0;
+    base64_save = 0;
+
+    out_len = g_base64_decode_step(
+      sep + 1,
+      len,
+      out_buf,
+      &base64_state,
+      &base64_save
+    );
+
+    cert = NULL;
+    res = gnutls_x509_crt_init(&cert);
+    if(res == GNUTLS_E_SUCCESS)
+    {
+      data.data = out_buf;
+      data.size = out_len;
+      res = gnutls_x509_crt_import(cert, &data, GNUTLS_X509_FMT_DER);
+    }
+
+    if(res != GNUTLS_E_SUCCESS)
+    {
+      inf_gnutls_set_error(&local_error, res);
+
+      g_propagate_prefixed_error(
+        error,
+        local_error,
+        _("Failed to read certificate for host \"%s\""),
+        prev
+      );
+
+      if(cert != NULL)
+        gnutls_x509_crt_deinit(cert);
+
+      g_hash_table_destroy(table);
+      g_free(out_buf);
+      g_free(content);
+      return NULL;
+    }
+
+    g_hash_table_insert(table, g_strdup(prev), cert);
+  }
+
+  g_free(out_buf);
+  g_free(content);
+  return table;
+}
+
+/**
+ * inf_cert_util_write_certificate_map:
+ * @cert_map: (transfer none) (element-type string gnutls_x509_crt_t): A
+ * certificate mapping, i.e. a hash table mapping hostname strings to
+ * #gnutls_x509_crt_t instances.
+ * @filename: The name of the file to write the mapping to.
+ * @error: Location to store error information, if any.
+ *
+ * Writes the given certificate mapping to a file with the given filename.
+ * See inf_cert_util_read_certificate_map() for the format of the written
+ * file. If an error occurs, @error is set and the function returns %FALSE.
+ *
+ * This function can be useful to implement trust-on-first-use (TOFU)
+ * semantics.
+ *
+ * Returns: %TRUE on success or %FALSE on error.
+ */
+gboolean
+inf_cert_util_write_certificate_map(GHashTable* cert_map,
+                                    const gchar* filename,
+                                    GError** error)
+{
+  gchar* dirname;
+  GString* string;
+
+  GHashTableIter iter;
+  gpointer key;
+  gpointer value;
+  const gchar* hostname;
+  gnutls_x509_crt_t cert;
+
+  size_t size;
+  int res;
+  gchar* buffer;
+  gchar* encoded_cert;
+
+  string = g_string_sized_new(4096 * g_hash_table_size(cert_map));
+
+  g_hash_table_iter_init(&iter, cert_map);
+  while(g_hash_table_iter_next(&iter, &key, &value))
+  {
+    hostname = (const gchar*)key;
+    cert = (gnutls_x509_crt_t)value;
+
+    size = 0;
+    res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_DER, NULL, &size);
+    g_assert(res != GNUTLS_E_SUCCESS);
+
+    buffer = NULL;
+    if(res == GNUTLS_E_SHORT_MEMORY_BUFFER)
+    {
+      buffer = g_malloc(size);
+      res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_DER, buffer, &size);
+    }
+
+    if(res != GNUTLS_E_SUCCESS)
+    {
+      g_free(buffer);
+      g_string_free(string, TRUE);
+      inf_gnutls_set_error(error, res);
+      return FALSE;
+    }
+
+    encoded_cert = g_base64_encode(buffer, size);
+    g_free(buffer);
+    
+    g_string_append(string, hostname);
+    g_string_append_c(string, ':');
+    g_string_append(string, encoded_cert);
+    g_string_append_c(string, '\n');
+
+    g_free(encoded_cert);
+  }
+
+  g_file_set_contents(
+    filename,
+    string->str,
+    string->len,
+    error
+  );
+
+  g_string_free(string, TRUE);
+  return TRUE;
+}
+
+/**
  * inf_cert_util_check_certificate_key:
  * @cert: (transfer none): The certificate to be checked.
  * @key: (transfer none): The private key to be checked.
@@ -1201,8 +1470,9 @@ inf_cert_util_get_issuer_dn_by_oid(gnutls_x509_crt_t cert,
  * at the DNS name and IP address SANs. If both are not available, the common
  * name of the certificate is returned.
  *
- * Returns: (transfer full) (allow-none): The best guess for the certificate's
- * hostname, or %NULL when it cannot be retrieved. Free with g_free() after use.
+ * Returns: (transfer full) (allow-none): The best guess for the
+ * certificate's hostname, or %NULL when it cannot be retrieved. Free with
+ * g_free() after use.
  */
 gchar*
 inf_cert_util_get_hostname(gnutls_x509_crt_t cert)

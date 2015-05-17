@@ -56,10 +56,6 @@ struct _InfGtkCertificateManagerPrivate {
   GSList* queries;
 };
 
-typedef enum _InfGtkCertificateManagerError {
-  INF_GTK_CERTIFICATE_MANAGER_ERROR_DUPLICATE_HOST_ENTRY
-} InfGtkCertificateManagerError;
-
 enum {
   PROP_0,
 
@@ -82,29 +78,6 @@ G_DEFINE_TYPE_WITH_CODE(InfGtkCertificateManager, inf_gtk_certificate_manager, G
  * less dramatic warning message. */
 static const unsigned int
 INF_GTK_CERTIFICATE_MANAGER_EXPIRATION_TOLERANCE = 3 * 24 * 3600; /* 3 days */
-
-/* memrchr does not seem to be available everywhere, so we implement it
- * ourselves. */
-static void*
-inf_gtk_certificate_manager_memrchr(void* buf,
-                                    char c,
-                                    size_t len)
-{
-  char* pos;
-  char* end;
-
-  pos = buf + len;
-  end = buf;
-
-  while(pos >= end)
-  {
-    if(*(pos - 1) == c)
-      return pos - 1;
-    --pos;
-  }
-
-  return NULL;
-}
 
 static GQuark
 inf_gtk_certificate_manager_verify_error_quark(void)
@@ -219,157 +192,6 @@ inf_gtk_certificate_manager_set_known_hosts(InfGtkCertificateManager* manager,
 }
 
 static GHashTable*
-inf_gtk_certificate_manager_load_known_hosts(InfGtkCertificateManager* mgr,
-                                             GError** error)
-{
-  InfGtkCertificateManagerPrivate* priv;
-  GHashTable* table;
-  gchar* content;
-  gsize size;
-  GError* local_error;
-
-  gchar* out_buf;
-  gsize out_buf_len;
-  gchar* pos;
-  gchar* prev;
-  gchar* next;
-  gchar* sep;
-
-  gsize len;
-  gsize out_len;
-  gint base64_state;
-  guint base64_save;
-
-  gnutls_datum_t data;
-  gnutls_x509_crt_t cert;
-  int res;
-
-  priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(mgr);
-
-  table = g_hash_table_new_full(
-    g_str_hash,
-    g_str_equal,
-    g_free,
-    (GDestroyNotify)gnutls_x509_crt_deinit
-  );
-
-  local_error = NULL;
-  g_file_get_contents(priv->known_hosts_file, &content, &size, &local_error);
-  if(local_error != NULL)
-  {
-    if(local_error->domain == G_FILE_ERROR &&
-       local_error->code == G_FILE_ERROR_NOENT)
-    {
-      return table;
-    }
-
-    g_propagate_prefixed_error(
-      error,
-      local_error,
-      _("Failed to open known hosts file \"%s\": "),
-      priv->known_hosts_file
-    );
-
-    g_hash_table_destroy(table);
-    return NULL;
-  }
-
-  out_buf = NULL;
-  out_buf_len = 0;
-  prev = content;
-  for(prev = content; prev != NULL; prev = next)
-  {
-    pos = strchr(prev, '\n');
-    next = NULL;
-
-    if(pos == NULL)
-      pos = content + size;
-    else
-      next = pos + 1;
-
-    sep = inf_gtk_certificate_manager_memrchr(prev, ':', pos - prev);
-    if(sep == NULL) continue; /* ignore line */
-
-    *sep = '\0';
-    if(g_hash_table_lookup(table, prev) != NULL)
-    {
-      g_set_error(
-        error,
-        g_quark_from_static_string("INF_GTK_CERTIFICATE_MANAGER_ERROR"),
-        INF_GTK_CERTIFICATE_MANAGER_ERROR_DUPLICATE_HOST_ENTRY,
-        _("Certificate for host \"%s\" appears twice in "
-          "known hosts file \"%s\""),
-        prev,
-        priv->known_hosts_file
-      );
-
-      g_hash_table_destroy(table);
-      g_free(out_buf);
-      g_free(content);
-      return NULL;
-    }
-
-    /* decode base64, import DER certificate */
-    len = (pos - (sep + 1));
-    out_len = len * 3 / 4;
-
-    if(out_len > out_buf_len)
-    {
-      out_buf = g_realloc(out_buf, out_len);
-      out_buf_len = out_len;
-    }
-
-    base64_state = 0;
-    base64_save = 0;
-
-    out_len = g_base64_decode_step(
-      sep + 1,
-      len,
-      out_buf,
-      &base64_state,
-      &base64_save
-    );
-
-    cert = NULL;
-    res = gnutls_x509_crt_init(&cert);
-    if(res == GNUTLS_E_SUCCESS)
-    {
-      data.data = out_buf;
-      data.size = out_len;
-      res = gnutls_x509_crt_import(cert, &data, GNUTLS_X509_FMT_DER);
-    }
-
-    if(res != GNUTLS_E_SUCCESS)
-    {
-      inf_gnutls_set_error(&local_error, res);
-
-      g_propagate_prefixed_error(
-        error,
-        local_error,
-        _("Failed to read certificate for host \"%s\" from "
-          "known hosts file \"%s\": "),
-        prev,
-        priv->known_hosts_file
-      );
-
-      if(cert != NULL)
-        gnutls_x509_crt_deinit(cert);
-
-      g_hash_table_destroy(table);
-      g_free(out_buf);
-      g_free(content);
-      return NULL;
-    }
-
-    g_hash_table_insert(table, g_strdup(prev), cert);
-  }
-
-  g_free(out_buf);
-  g_free(content);
-  return table;
-}
-
-static GHashTable*
 inf_gtk_certificate_manager_ref_known_hosts(InfGtkCertificateManager* mgr,
                                             GError** error)
 {
@@ -385,7 +207,7 @@ inf_gtk_certificate_manager_ref_known_hosts(InfGtkCertificateManager* mgr,
   }
   else
   {
-    return inf_gtk_certificate_manager_load_known_hosts(mgr, error);
+    return inf_cert_util_read_certificate_map(priv->known_hosts_file, error);
   }
 }
 
@@ -396,19 +218,6 @@ inf_gtk_certificate_manager_write_known_hosts(InfGtkCertificateManager* mgr,
 {
   InfGtkCertificateManagerPrivate* priv;
   gchar* dirname;
-  GIOChannel* channel;
-  GIOStatus status;
-
-  GHashTableIter iter;
-  gpointer key;
-  gpointer value;
-  const gchar* hostname;
-  gnutls_x509_crt_t cert;
-
-  size_t size;
-  int res;
-  gchar* buffer;
-  gchar* encoded_cert;
 
   priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(mgr);
   
@@ -431,63 +240,11 @@ inf_gtk_certificate_manager_write_known_hosts(InfGtkCertificateManager* mgr,
 
   g_free(dirname);
 
-  channel = g_io_channel_new_file(priv->known_hosts_file, "w", error);
-  if(channel == NULL) return FALSE;
-
-  status = g_io_channel_set_encoding(channel, NULL, error);
-  if(status != G_IO_STATUS_NORMAL)
-  {
-    g_io_channel_unref(channel);
-    return FALSE;
-  }
-
-  g_hash_table_iter_init(&iter, table);
-  while(g_hash_table_iter_next(&iter, &key, &value))
-  {
-    hostname = (const gchar*)key;
-    cert = (gnutls_x509_crt_t)value;
-
-    size = 0;
-    res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_DER, NULL, &size);
-    g_assert(res != GNUTLS_E_SUCCESS);
-
-    buffer = NULL;
-    if(res == GNUTLS_E_SHORT_MEMORY_BUFFER)
-    {
-      buffer = g_malloc(size);
-      res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_DER, buffer, &size);
-    }
-
-    if(res != GNUTLS_E_SUCCESS)
-    {
-      g_free(buffer);
-      g_io_channel_unref(channel);
-      inf_gnutls_set_error(error, res);
-      return FALSE;
-    }
-
-    encoded_cert = g_base64_encode(buffer, size);
-    g_free(buffer);
-
-    status = g_io_channel_write_chars(channel, hostname, strlen(hostname), NULL, error);
-    if(status == G_IO_STATUS_NORMAL)
-      status = g_io_channel_write_chars(channel, ":", 1, NULL, error);
-    if(status == G_IO_STATUS_NORMAL)
-      status = g_io_channel_write_chars(channel, encoded_cert, strlen(encoded_cert), NULL, error);
-    if(status == G_IO_STATUS_NORMAL)
-      status = g_io_channel_write_chars(channel, "\n", 1, NULL, error);
-
-    g_free(encoded_cert);
-
-    if(status != G_IO_STATUS_NORMAL)
-    {
-      g_io_channel_unref(channel);
-      return FALSE;
-    }
-  }
-
-  g_io_channel_unref(channel);
-  return TRUE;
+  return inf_cert_util_write_certificate_map(
+    table,
+    priv->known_hosts_file,
+    error
+  );
 }
 
 static void

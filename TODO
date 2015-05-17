@@ -34,6 +34,8 @@ Protocol Break:
     safe from such conflicts. If we do this, we also need to add some unit
     tests in test/session which check that it is implemented correctly.
 
+  * Add a rename functionality
+
 Others:
 
  * Split InfXmppConnection (XMPP)
@@ -65,8 +67,6 @@ Others:
    InfCommunicationObject and still have the stuff relayed? Check again how
    the InfcBrowser->InfcSessionProxy->InfSession flow goes and do the same.
  * The same kind of thing should be implemented on the server side.
- * Make a common InfBrowserTree class which implements the basic tree structure
-   commonly on client and server side.
  * Remove infc_browser_get_status() function
  * Change the storage interface to be asynchronous
    * take the chance and require gio
@@ -94,3 +94,7 @@ Others:
  * Threading: Better support for multi-core CPUs, ideally by running each
    InfCommunicationGroup in a separate thread. Would need many adaptions in
    other code to be thread-safe.
+ * OCSP: Server asks for OCSP status periodically, and delivers ocsp status
+   if client asks for it. Client always asks for OCSP status, and fails the
+   connection if no OCSP response is retrieved and OCSP MUST STAPLE is set in
+   server's cert.
