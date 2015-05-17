@@ -42,6 +42,7 @@ common_HEADERS = \
 	common/inf-buffer.h \
 	common/inf-certificate-chain.h \
 	common/inf-certificate-credentials.h \
+	common/inf-certificate-verify.h \
 	common/inf-cert-util.h \
 	common/inf-chat-buffer.h \
 	common/inf-chat-session.h \
@@ -142,6 +143,7 @@ commonSOURCES = \
 	common/inf-buffer.c \
 	common/inf-certificate-chain.c \
 	common/inf-certificate-credentials.c \
+	common/inf-certificate-verify.c \
 	common/inf-cert-util.c \
 	common/inf-chat-buffer.c \
 	common/inf-chat-session.c \

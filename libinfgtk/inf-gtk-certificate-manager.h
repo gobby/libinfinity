@@ -20,7 +20,7 @@
 #ifndef __INF_GTK_CERTIFICATE_MANAGER_H__
 #define __INF_GTK_CERTIFICATE_MANAGER_H__
 
-#include <libinfinity/common/inf-xmpp-manager.h>
+#include <libinfinity/common/inf-certificate-verify.h>
 
 #include <gtk/gtk.h>
 
@@ -39,11 +39,11 @@ typedef struct _InfGtkCertificateManager InfGtkCertificateManager;
 typedef struct _InfGtkCertificateManagerClass InfGtkCertificateManagerClass;
 
 struct _InfGtkCertificateManagerClass {
-  GObjectClass parent_class;
+  InfCertificateVerifyClass parent_class;
 };
 
 struct _InfGtkCertificateManager {
-  GObject parent;
+  InfCertificateVerify parent;
 };
 
 GType

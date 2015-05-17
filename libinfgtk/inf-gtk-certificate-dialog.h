@@ -21,6 +21,7 @@
 #define __INF_GTK_CERTIFICATE_DIALOG_H__
 
 #include <libinfinity/common/inf-certificate-chain.h>
+#include <libinfinity/common/inf-certificate-verify.h>
 
 #include <gtk/gtk.h>
 
@@ -61,40 +62,16 @@ struct _InfGtkCertificateDialog {
   GtkDialog parent;
 };
 
-/**
- * InfGtkCertificateDialogFlags:
- * @INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH: The hostname of the
- * machine connected to does not match the one from the certificate.
- * @INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN: The issuer of the
- * certificate is not trusted, i.e. is not in the list of trusted CAs.
- * @INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED: For this host we expected a
- * different certificate. Maybe someone is eavesdropping on the connection.
- * @INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED: If set, the previously pinned
- * certificate has expired.
- *
- * Various flags for why a certificate is not trusted.
- * #InfGtkCertificateDialog uses this information to show a corresponding
- * warning message to the user.
- */
-typedef enum _InfGtkCertificateDialogFlags {
-  INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH  = 1 << 0,
-  INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN   = 1 << 1,
-  INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED         = 1 << 2,
-  INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED        = 1 << 3
-} InfGtkCertificateDialogFlags;
-
-GType
-inf_gtk_certificate_dialog_flags_get_type(void) G_GNUC_CONST;
-
 GType
 inf_gtk_certificate_dialog_get_type(void) G_GNUC_CONST;
 
 InfGtkCertificateDialog*
 inf_gtk_certificate_dialog_new(GtkWindow* parent,
                                GtkDialogFlags dialog_flags,
-                               InfGtkCertificateDialogFlags certificate_flags,
+                               InfCertificateVerifyFlags verify_flags,
                                const gchar* hostname,
-                               InfCertificateChain* certificate_chain);
+                               InfCertificateChain* certificate_chain,
+                               gnutls_x509_crt_t pinned_certificate);
 
 G_END_DECLS
 

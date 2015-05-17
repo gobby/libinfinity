@@ -49,6 +49,7 @@
     <xi:include href="xml/inf-simulated-connection.xml"/>
     <xi:include href="xml/inf-discovery-avahi.xml"/>
     <xi:include href="xml/inf-xmpp-manager.xml"/>
+    <xi:include href="xml/inf-certificate-verify.xml"/>
     <xi:include href="xml/inf-io.xml"/>
     <xi:include href="xml/inf-standalone-io.xml"/>
     <xi:include href="xml/inf-async-operation.xml"/>

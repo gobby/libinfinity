@@ -1675,6 +1675,26 @@ inf_communication_central_method_get_type
 </SECTION>
 
 <SECTION>
+<FILE>inf-certificate-verify</FILE>
+<TITLE>InfCertificateVerify</TITLE>
+InfCertificateVerify
+InfCertificateVerifyClass
+InfCertificateVerifyFlags
+inf_certificate_verify_new
+inf_certificate_verify_checked
+<SUBSECTION Standard>
+INF_CERTIFICATE_VERIFY
+INF_IS_CERTIFICATE_VERIFY
+INF_CERTIFICATE_VERIFY_CLASS
+INF_IS_CERTIFICATE_VERIFY_CLASS
+INF_CERTIFICATE_VERIFY_GET_CLASS
+inf_certificate_verify_get_type
+INF_TYPE_CERTIFICATE_VERIFY
+INF_TYPE_CERTIFICATE_VERIFY_FLAGS
+inf_certificate_verify_flags_get_type
+</SECTION>
+
+<SECTION>
 <FILE>inf-chat-session</FILE>
 <TITLE>InfChatSession</TITLE>
 InfChatSession

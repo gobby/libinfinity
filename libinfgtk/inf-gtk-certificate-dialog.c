@@ -25,9 +25,10 @@
  * @stability: Unstable
  *
  * #InfGtkCertificateDialog is a dialog that can be shown to a user if the
- * validation of the server's certificate fails. The dialog will present to
- * the user the reason(s) of the validation failure and might ask whether to
- * fully establish the connection to the server or not.
+ * validation of the server's certificate cannot be performed automatically.
+ * The dialog will present to the user the reason(s) of the validation
+ * failure and might ask whether to fully establish the connection to the
+ * server or not.
  **/
 
 #include <libinfgtk/inf-gtk-certificate-dialog.h>
@@ -39,34 +40,11 @@
 #include <gnutls/x509.h>
 #include <time.h>
 
-static const GFlagsValue inf_gtk_certificate_dialog_flags_values[] = {
-  {
-    INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH,
-    "INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH",
-    "cert-hostname-mismatch"
-  }, {
-    INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN,
-    "INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN",
-    "cert-not-known"
-  }, {
-    INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED,
-    "INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED",
-    "cert-unexpected"
-  }, {
-    INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED,
-    "INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED",
-    "cert-old-expired"
-  }, {
-    0,
-    NULL,
-    NULL
-  }
-};
-
 typedef struct _InfGtkCertificateDialogPrivate InfGtkCertificateDialogPrivate;
 struct _InfGtkCertificateDialogPrivate {
   InfCertificateChain* certificate_chain;
-  InfGtkCertificateDialogFlags certificate_flags;
+  gnutls_x509_crt_t pinned_certificate;
+  InfCertificateVerifyFlags verify_flags;
   gchar* hostname;
 
   GtkTreeStore* certificate_store;
@@ -83,21 +61,31 @@ enum {
   PROP_0,
 
   PROP_CERTIFICATE_CHAIN,
-  PROP_CERTIFICATE_FLAGS,
+  PROP_PINNED_CERTIFICATE,
+  PROP_VERIFY_FLAGS,
   PROP_HOSTNAME
 };
 
 #define INF_GTK_CERTIFICATE_DIALOG_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_CERTIFICATE_DIALOG, InfGtkCertificateDialogPrivate))
 
-INF_DEFINE_FLAGS_TYPE(InfGtkCertificateDialogFlags, inf_gtk_certificate_dialog_flags, inf_gtk_certificate_dialog_flags_values)
 G_DEFINE_TYPE_WITH_CODE(InfGtkCertificateDialog, inf_gtk_certificate_dialog, GTK_TYPE_DIALOG,
   G_ADD_PRIVATE(InfGtkCertificateDialog))
+
+/* When a host presents a certificate different from one that we have pinned,
+ * usually we warn the user that something fishy is going on. However, if the
+ * pinned certificate has expired or will expire soon, then we kind of expect
+ * the certificate to change, and issue a less "flashy" warning message. This
+ * value defines how long before the pinned certificate expires we show a
+ * less dramatic warning message. */
+static const unsigned int
+INF_GTK_CERTIFICATE_DIALOG_EXPIRATION_TOLERANCE = 30 * 24 * 3600; /* 30 days */
 
 static void
 inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
 {
   InfGtkCertificateDialogPrivate* priv;
   gnutls_x509_crt_t own_cert;
+  time_t expiration_time;
 
   gint normal_width_chars;
   gint size;
@@ -112,7 +100,7 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
 
   priv = INF_GTK_CERTIFICATE_DIALOG_PRIVATE(dialog);
 
-  if(priv->certificate_flags != 0 && priv->hostname != NULL)
+  if(priv->verify_flags != 0 && priv->hostname != NULL)
   {
     own_cert =
       inf_certificate_chain_get_own_certificate(priv->certificate_chain);
@@ -127,14 +115,17 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
 
     info_text = g_string_sized_new(256);
 
-    if(priv->certificate_flags &
-       INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED)
+    if(priv->verify_flags & INF_CERTIFICATE_VERIFY_NOT_PINNED)
     {
-      /* TODO: Here it might also be interesting to show the stored
-       * certificate */
+      /* TODO: Here it might also be interesting to show the pinned
+       * certificate to the user... */
 
-      if(priv->certificate_flags &
-         INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED)
+      expiration_time = gnutls_x509_crt_get_expiration_time(
+        priv->pinned_certificate
+      );
+
+      if(expiration_time != (time_t)(-1) &&
+         time(NULL) > expiration_time - INF_GTK_CERTIFICATE_DIALOG_EXPIRATION_TOLERANCE)
       {
         ctext = _("The host has presented a new certificate.");
         markup = g_markup_printf_escaped("<b>%s</b>", ctext);
@@ -145,8 +136,9 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
 
         g_string_append(
           info_text,
-          _("Its previous certificate has expired. Please make sure that you "
-            "trust the new certificate.")
+          _("Its previous certificate has expired or is closed to "
+            "expiration. Please make sure that you trust the new "
+            "certificate.")
         );
       }
       else
@@ -161,8 +153,8 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
         g_string_append(
           info_text,
           _("This means someone might be eavesdropping on the connection. "
-            "Only connect if you expected this message, otherwise please "
-            "contact the server administrator.")
+            "Please only continue if you expected this message, otherwise "
+            "please contact the server administrator.")
         );
       }
     }
@@ -174,8 +166,7 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
           "make sure that you trust this host before proceeding.")
       );
 
-      if(priv->certificate_flags &
-        INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN)
+      if(priv->verify_flags & INF_CERTIFICATE_VERIFY_ISSUER_NOT_KNOWN)
       {
         if(info_text->len > 0)
           g_string_append(info_text, "\n\n");
@@ -186,8 +177,7 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
         );
       }
 
-      if(priv->certificate_flags &
-         INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH)
+      if(priv->verify_flags & INF_CERTIFICATE_VERIFY_HOSTNAME_MISMATCH)
       {
         if(info_text->len > 0)
           g_string_append(info_text, "\n\n");
@@ -362,7 +352,8 @@ inf_gtk_certificate_dialog_init(InfGtkCertificateDialog* dialog)
   priv = INF_GTK_CERTIFICATE_DIALOG_PRIVATE(dialog);
 
   priv->certificate_chain = NULL;
-  priv->certificate_flags = 0;
+  priv->pinned_certificate = NULL;
+  priv->verify_flags = 0;
   priv->hostname = NULL;
 
   gtk_widget_init_template(GTK_WIDGET(dialog));
@@ -417,17 +408,21 @@ inf_gtk_certificate_dialog_set_property(GObject* object,
     );
 
     break;
-  case PROP_CERTIFICATE_FLAGS:
-    priv->certificate_flags = g_value_get_flags(value);
+  case PROP_PINNED_CERTIFICATE:
+    priv->pinned_certificate = g_value_get_pointer(value);
+    inf_gtk_certificate_dialog_renew_info(dialog);
+    break;
+  case PROP_VERIFY_FLAGS:
+    priv->verify_flags = g_value_get_flags(value);
 
-    if(priv->certificate_flags != 0 && priv->hostname != NULL)
+    if(priv->verify_flags != 0 && priv->hostname != NULL)
       inf_gtk_certificate_dialog_renew_info(dialog);
 
     break;
   case PROP_HOSTNAME:
     if(priv->hostname != NULL) g_free(priv->hostname);
     priv->hostname = g_value_dup_string(value);
-    if(priv->certificate_flags != 0 && priv->hostname != NULL)
+    if(priv->verify_flags != 0 && priv->hostname != NULL)
       inf_gtk_certificate_dialog_renew_info(dialog);
 
     break;
@@ -454,8 +449,11 @@ inf_gtk_certificate_dialog_get_property(GObject* object,
   case PROP_CERTIFICATE_CHAIN:
     g_value_set_boxed(value, priv->certificate_chain);
     break;
-  case PROP_CERTIFICATE_FLAGS:
-    g_value_set_flags(value, priv->certificate_flags);
+  case PROP_PINNED_CERTIFICATE:
+    g_value_set_pointer(value, priv->pinned_certificate);
+    break;
+  case PROP_VERIFY_FLAGS:
+    g_value_set_flags(value, priv->verify_flags);
     break;
   case PROP_HOSTNAME:
     g_value_set_string(value, priv->hostname);
@@ -547,12 +545,23 @@ inf_gtk_certificate_dialog_class_init(
 
   g_object_class_install_property(
     object_class,
-    PROP_CERTIFICATE_FLAGS,
+    PROP_PINNED_CERTIFICATE,
+    g_param_spec_pointer(
+      "pinned-certificate",
+      "Pinned Certificate",
+      "The certificate that we had pinned for this host",
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_VERIFY_FLAGS,
     g_param_spec_flags(
-      "certificate-flags",
-      "Certificate flags",
+      "verify-flags",
+      "Verify flags",
       "What warnings about the certificate to display",
-      INF_GTK_TYPE_CERTIFICATE_DIALOG_FLAGS,
+      INF_TYPE_CERTIFICATE_VERIFY_FLAGS,
       0,
       G_PARAM_READWRITE
     )
@@ -579,36 +588,41 @@ inf_gtk_certificate_dialog_class_init(
  * inf_gtk_certificate_dialog_new: (constructor)
  * @parent: Parent #GtkWindow of the dialog.
  * @dialog_flags: Flags for the dialog, see #GtkDialogFlags.
- * @certificate_flags: What certificate warnings to show, see
- * #InfGtkCertificateDialogFlags.
+ * @verify_flags: What certificate warnings to show, see
+ * #InfCertificateVerifyFlags.
  * @hostname: The host name of the server that provides the certificate.
  * @certificate_chain: (transfer none): The certificate chain provided by
  * the server.
+ * @pinned_certificate: (transfer none): The certificate that we had pinned
+ * for this host, or %NULL.
  *
  * Creates a new #InfGtkCertificateDialog. A #InfGtkCertificateDialog shows
- * warnings about a server's certificate to a user, for example when the
- * issuer is not trusted or the certificate is expired.
+ * a warning about a server's certificate to a user, for example when the
+ * issuer is not trusted or the hostname does not match what the certificate
+ * was issued to.
  *
- * Returns: (transfer full): A New #InfGtkCertificateDialog.
+ * Returns: (transfer full): A new #InfGtkCertificateDialog.
  */
 InfGtkCertificateDialog*
 inf_gtk_certificate_dialog_new(GtkWindow* parent,
                                GtkDialogFlags dialog_flags,
-                               InfGtkCertificateDialogFlags certificate_flags,
+                               InfCertificateVerifyFlags verify_flags,
                                const gchar* hostname,
-                               InfCertificateChain* certificate_chain)
+                               InfCertificateChain* certificate_chain,
+                               gnutls_x509_crt_t pinned_certificate)
 {
   GObject* object;
 
   g_return_val_if_fail(parent == NULL || GTK_IS_WINDOW(parent), NULL);
-  g_return_val_if_fail(certificate_flags != 0, NULL);
+  g_return_val_if_fail(verify_flags != 0, NULL);
   g_return_val_if_fail(hostname != NULL, NULL);
   g_return_val_if_fail(certificate_chain != NULL, NULL);
 
   object = g_object_new(
     INF_GTK_TYPE_CERTIFICATE_DIALOG,
     "certificate-chain", certificate_chain,
-    "certificate-flags", certificate_flags,
+    "pinned-certificate", pinned_certificate,
+    "verify-flags", verify_flags,
     "hostname", hostname,
     NULL
   );
