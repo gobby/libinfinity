@@ -118,10 +118,6 @@ gnutls_x509_crt_t
 inf_cert_util_copy_certificate(gnutls_x509_crt_t src,
                                GError** error);
 
-gboolean
-inf_cert_util_check_certificate_key(gnutls_x509_crt_t cert,
-                                    gnutls_x509_privkey_t key);
-
 GHashTable*
 inf_cert_util_read_certificate_map(const gchar* filename,
                                    GError** error);
@@ -130,6 +126,15 @@ gboolean
 inf_cert_util_write_certificate_map(GHashTable* cert_map,
                                     const gchar* filename,
                                     GError** error);
+
+gboolean
+inf_cert_util_check_certificate_key(gnutls_x509_crt_t cert,
+                                    gnutls_x509_privkey_t key);
+
+gboolean
+inf_cert_util_compare_fingerprint(gnutls_x509_crt_t cert1,
+                                  gnutls_x509_crt_t cert2,
+                                  GError** error);
 
 gchar*
 inf_cert_util_get_dn(gnutls_x509_crt_t cert);

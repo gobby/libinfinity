@@ -1325,6 +1325,66 @@ inf_cert_util_check_certificate_key(gnutls_x509_crt_t cert,
 }
 
 /**
+ * inf_cert_util_compare_fingerprint:
+ * @cert1: The first certificate to compare.
+ * @cert2: The second certificate to compare.
+ * @error: Location to store error information, if any.
+ *
+ * Checks whether the SHA-256 fingerprints of the two given certificates are
+ * identical or not. If a fingerprint cannot be obtained, the function
+ * returns %FALSE and @error is set.
+ *
+ * Returns: Whether the two certificates have identical fingerprints. Returns
+ * %FALSE on error.
+ */
+gboolean
+inf_cert_util_compare_fingerprint(gnutls_x509_crt_t cert1,
+                                  gnutls_x509_crt_t cert2,
+                                  GError** error)
+{
+  static const unsigned int SHA256_DIGEST_SIZE = 32;
+
+  size_t size;
+  guchar cert1_fingerprint[SHA256_DIGEST_SIZE];
+  guchar cert2_fingerprint[SHA256_DIGEST_SIZE];
+
+  int ret;
+  int cmp;
+
+  size = SHA256_DIGEST_SIZE;
+
+  ret = gnutls_x509_crt_get_fingerprint(
+    cert1,
+    GNUTLS_DIG_SHA256,
+    cert1_fingerprint,
+    &size
+  );
+
+  if(ret == GNUTLS_E_SUCCESS)
+  {
+    g_assert(size == SHA256_DIGEST_SIZE);
+
+    ret = gnutls_x509_crt_get_fingerprint(
+      cert2,
+      GNUTLS_DIG_SHA256,
+      cert2_fingerprint,
+      &size
+    );
+  }
+
+  if(ret != GNUTLS_E_SUCCESS)
+  {
+    inf_gnutls_set_error(error, ret);
+    return FALSE;
+  }
+
+  cmp = memcmp(cert1_fingerprint, cert2_fingerprint, SHA256_DIGEST_SIZE);
+  if(cmp != 0) return FALSE;
+
+  return TRUE;
+}
+
+/**
  * inf_cert_util_get_dn:
  * @cert: (transfer none): An initialized #gnutls_x509_crt_t.
  *
