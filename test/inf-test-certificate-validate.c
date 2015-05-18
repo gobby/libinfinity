@@ -711,6 +711,7 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
     {
       pinned_cert = g_hash_table_lookup(pinned, desc->hostname);
 
+      cert_equal = FALSE;
       if(pinned_cert != NULL)
       {
         g_object_get(
