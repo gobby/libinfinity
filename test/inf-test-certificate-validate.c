@@ -30,10 +30,13 @@
 #include <gnutls/x509.h>
 #include <gnutls/gnutls.h>
 
+#include <glib/gstdio.h>
+
 typedef enum _InfTestCertificateValidateExpectation {
   INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT,
   INF_TEST_CERTIFICATE_VALIDATE_EXPECT_REJECT,
-  INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY,
+  INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_ACCEPT,
+  INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_REJECT,
 } InfTestCertificateValidateExpectation;
 
 typedef struct _InfTestCertificateValidateDesc InfTestCertificateValidateDesc;
@@ -48,21 +51,204 @@ struct _InfTestCertificateValidateDesc {
   /* client settings */
   const gchar* ca_file; /* CA file */
   const gchar* hostname; /* Connected server hostname */
-  const gchar* known_hosts_file; /* Known hosts file, or NULL */
+  const gchar* pinned_certificate;
 
   /* Expected result */
   InfTestCertificateValidateExpectation expectation;
+  gboolean accept_query; /* If there is a query, accept it? */
+  gboolean expect_pinned; /* Whether the cert should end up pinned or not */
+};
+
+typedef struct _InfTestCertificateValidateCheckCertificateData
+  InfTestCertificateValidateCheckCertificateData;
+struct _InfTestCertificateValidateCheckCertificateData {
+  gboolean accept_query;
+  gboolean did_query;
 };
 
 const InfTestCertificateValidateDesc TESTS[] = {
   {
-    "expired-certificate",
+    "expired-trusted",
     "test-expire-key.pem",
     "test-expire-crt.pem",
     "ca-crt.pem",
     "expire-test.gobby.0x539.de",
     NULL,
-    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_REJECT
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_REJECT,
+    FALSE,
+    FALSE
+  }, {
+    "expired-pinned",
+    "test-expire-key.pem",
+    "test-expire-crt.pem",
+    NULL,
+    "expire-test.gobby.0x539.de",
+    "test-expire-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_REJECT,
+    FALSE,
+    TRUE /* cert was pinned before, and rejection doesn't un-pin it. That's
+            good so that if the server gets an updated certificate we
+            remember that the previous one has expired. */
+  }, {
+    "expired-pinned-to-good",
+    "test-expire-good-key.pem",
+    "test-expire-good-crt.pem",
+    "ca-crt.pem",
+    "expire-test.gobby.0x539.de",
+    "test-expire-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT,
+    FALSE,
+    FALSE
+  }, {
+    "expired-pinned-to-good-mismatch-query-accept",
+    "test-expire-good-key.pem",
+    "test-expire-good-crt.pem",
+    "ca-crt.pem",
+    "expire-test-mismatch.gobby.0x539.de",
+    "test-expire-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_ACCEPT,
+    TRUE,
+    TRUE
+  }, {
+    "expired-pinned-to-good-mismatch-query-reject",
+    "test-expire-good-key.pem",
+    "test-expire-good-crt.pem",
+    "ca-crt.pem",
+    "expire-test-mismatch.gobby.0x539.de",
+    "test-expire-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_REJECT,
+    FALSE,
+    FALSE /* The old certificate will remain pinned, but not the new one */
+  }, {
+    "expired-pinned-to-good-mismatch-query-accept",
+    "test-expire-good-key.pem",
+    "test-expire-good-crt.pem",
+    "ca-crt.pem",
+    "expire-test-mismatch.gobby.0x539.de",
+    "test-expire-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_ACCEPT,
+    TRUE,
+    TRUE
+  }, {
+    "expired-pinned-to-good-mismatch-query-reject",
+    "test-expire-good-key.pem",
+    "test-expire-good-crt.pem",
+    "ca-crt.pem",
+    "expire-test-mismatch.gobby.0x539.de",
+    "test-expire-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_REJECT,
+    FALSE,
+    FALSE /* The old certificate will remain pinned, but not the new one */
+  }, {
+    "good",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    "ca-crt.pem",
+    "test-good.gobby.0x539.de",
+    NULL,
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT,
+    FALSE,
+    FALSE
+  }, {
+    "good-pinned",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    "ca-crt.pem",
+    "test-good.gobby.0x539.de",
+    "test-good-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT,
+    FALSE,
+    FALSE
+  }, {
+    "good-pinned-to-other",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    "ca-crt.pem",
+    "test-good.gobby.0x539.de",
+    "test-expire-good-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT,
+    FALSE,
+    FALSE
+  }, {
+    "good-pinned-mismatch",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    "ca-crt.pem",
+    "good-test-mismatch.gobby.0x539.de",
+    "test-good-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT,
+    FALSE,
+    TRUE
+  }, {
+    "good-pinned-to-other-mismatch-query-accept",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    "ca-crt.pem",
+    "good-test-mismatch.gobby.0x539.de",
+    "test-expire-good-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_ACCEPT,
+    TRUE,
+    TRUE
+  }, {
+    "good-pinned-to-other-mismatch-query-reject",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    "ca-crt.pem",
+    "good-test-mismatch.gobby.0x539.de",
+    "test-expire-good-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_REJECT,
+    FALSE,
+    FALSE /* The old certificate will remain pinned, but not the new one */
+  }, {
+    "good-mismatch-query-accept",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    "ca-crt.pem",
+    "good-test-mismatch.gobby.0x539.de",
+    NULL,
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_ACCEPT,
+    TRUE,
+    TRUE
+  }, {
+    "good-mismatch-query-reject",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    "ca-crt.pem",
+    "good-test-mismatch.gobby.0x539.de",
+    NULL,
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_REJECT,
+    FALSE,
+    FALSE
+  }, {
+    "good-untrusted-query-accept",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    NULL,
+    "test-good.gobby.0x539.de",
+    NULL,
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_ACCEPT,
+    TRUE,
+    TRUE
+  }, {
+    "good-untrusted-query-reject",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    NULL,
+    "test-good.gobby.0x539.de",
+    NULL,
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_REJECT,
+    FALSE,
+    FALSE
+  }, {
+    "good-pinned-untrusted",
+    "test-good-key.pem",
+    "test-good-crt.pem",
+    NULL,
+    "test-good.gobby.0x539.de",
+    "test-good-crt.pem",
+    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT,
+    FALSE,
+    TRUE
   }, {
     NULL
   }
@@ -182,19 +368,26 @@ inf_test_certificate_validate_setup_client(InfIo* io,
   int res;
   guint i;
 
-  cas = inf_cert_util_read_certificate(ca_file, NULL, error);
-  if(!cas) return NULL;
-
   creds = inf_certificate_credentials_new();
-  res = gnutls_certificate_set_x509_trust(
-    inf_certificate_credentials_get(creds),
-    (gnutls_x509_crt_t*)cas->pdata,
-    cas->len
-  );
+  if(ca_file != NULL)
+  {
+    cas = inf_cert_util_read_certificate(ca_file, NULL, error);
+    if(cas == NULL)
+    {
+      inf_certificate_credentials_unref(creds);
+      return NULL;
+    }
 
-  for(i = 0; i < cas->len; ++i)
-    gnutls_x509_crt_deinit(cas->pdata[i]);
-  g_ptr_array_free(cas, TRUE);
+    res = gnutls_certificate_set_x509_trust(
+      inf_certificate_credentials_get(creds),
+      (gnutls_x509_crt_t*)cas->pdata,
+      cas->len
+    );
+
+    for(i = 0; i < cas->len; ++i)
+      gnutls_x509_crt_deinit(cas->pdata[i]);
+    g_ptr_array_free(cas, TRUE);
+  }
 
   addr = inf_ip_address_new_loopback4();
   conn = inf_tcp_connection_new(io, addr, 6524);
@@ -211,6 +404,7 @@ inf_test_certificate_validate_setup_client(InfIo* io,
     NULL
   );
 
+  inf_certificate_credentials_unref(creds);
   if(inf_tcp_connection_open(conn, error) == FALSE)
   {
     g_object_unref(conn);
@@ -220,6 +414,52 @@ inf_test_certificate_validate_setup_client(InfIo* io,
 
   g_object_unref(conn);
   return xmpp;
+}
+
+static gchar*
+inf_test_validate_setup_pin(const gchar* pinned_hostname,
+                            const gchar* pinned_certificate,
+                            GError** error)
+{
+  GPtrArray* certs;
+  gchar* target_file;
+  GHashTable* table;
+  guint i;
+  gboolean result;
+
+  if(pinned_hostname != NULL && pinned_certificate != NULL)
+  {
+    certs = inf_cert_util_read_certificate(pinned_certificate, NULL, error);
+    if(certs == NULL) return NULL;
+  }
+  else
+  {
+    certs = g_ptr_array_new();
+  }
+
+  target_file = g_build_filename(g_get_tmp_dir(), "pinned-test", NULL);
+
+  table = g_hash_table_new_full(
+    g_str_hash,
+    g_str_equal,
+    NULL,
+    (GDestroyNotify)gnutls_x509_crt_deinit
+  );
+
+  for(i = 0; i < certs->len; ++i)
+    g_hash_table_insert(table, (gpointer)pinned_hostname, certs->pdata[i]);
+  g_ptr_array_free(certs, TRUE);
+
+  result = inf_cert_util_write_certificate_map(table, target_file, error);
+
+  g_hash_table_destroy(table);
+  if(result == FALSE)
+  {
+    g_free(target_file);
+    target_file = NULL;
+  }
+
+  return target_file;
 }
 
 static void
@@ -254,6 +494,26 @@ inf_test_validate_certificate_error_cb(InfXmlConnection* conn,
     *out_error = g_error_copy(error);
 }
 
+static void
+inf_test_certificate_validate_check_certificate(InfCertificateVerify* verify,
+                                                InfXmppConnection* conn,
+                                                InfCertificateChain* chain,
+                                                gnutls_x509_crt_t pinned,
+                                                InfCertificateVerifyFlags flg,
+                                                gpointer user_data)
+{
+  InfTestCertificateValidateCheckCertificateData* data;
+  data = (InfTestCertificateValidateCheckCertificateData*)user_data;
+
+  data->did_query = TRUE;
+
+  /* Close the connection so that we return from the IO loop */
+  if(data->accept_query)
+    inf_certificate_verify_checked(verify, conn, TRUE);
+  else
+    inf_certificate_verify_checked(verify, conn, FALSE);
+}
+
 static gboolean
 inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
                                   GError** error)
@@ -264,11 +524,17 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
   InfXmppManager* xmpp_manager;
   InfCertificateVerify* verify;
   InfXmppConnection* client;
+  gchar* pinned_file;
 
   InfXmlConnectionStatus status;
+  InfTestCertificateValidateCheckCertificateData check_certificate_data;
   gboolean result;
 
   GError* conn_error;
+  GHashTable* pinned;
+  gnutls_x509_crt_t pinned_cert;
+  InfCertificateChain* current_cert;
+  gboolean cert_equal;
 
   /* Setup server */
   io = INF_IO(inf_standalone_io_new());
@@ -287,11 +553,29 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
   }
 
   /* Create client */
-  xmpp_manager = inf_xmpp_manager_new();
+  pinned_file = inf_test_validate_setup_pin(
+    desc->hostname,
+    desc->pinned_certificate,
+    error
+  );
 
-  verify = inf_certificate_verify_new(
-    xmpp_manager,
-    desc->known_hosts_file
+  if(pinned_file == NULL)
+  {
+    g_object_unref(server);
+    g_object_unref(io);
+    return FALSE;
+  }
+
+  xmpp_manager = inf_xmpp_manager_new();
+  verify = inf_certificate_verify_new(xmpp_manager, pinned_file);
+
+  check_certificate_data.did_query = FALSE;
+  check_certificate_data.accept_query = desc->accept_query;
+  g_signal_connect(
+    G_OBJECT(verify),
+    "check-certificate",
+    G_CALLBACK(inf_test_certificate_validate_check_certificate),
+    &check_certificate_data
   );
 
   client = inf_test_certificate_validate_setup_client(
@@ -303,6 +587,8 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
 
   if(client == NULL)
   {
+    g_unlink(pinned_file);
+    g_free(pinned_file);
     g_object_unref(io);
     g_object_unref(xmpp_manager);
     g_object_unref(verify);
@@ -329,8 +615,6 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
     &conn_error
   );
 
-  /* TODO: Detect whether check-certificate is emitted */
-
   inf_standalone_io_loop(INF_STANDALONE_IO(io));
   g_object_unref(io);
 
@@ -341,7 +625,20 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
   {
     g_assert(conn_error == NULL);
 
-    if(desc->expectation != INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT)
+    if(check_certificate_data.did_query == TRUE &&
+       desc->expectation != INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_ACCEPT)
+    {
+      g_set_error(
+        error,
+        inf_test_certificate_validate_error(),
+        3,
+        "Certificate queried and accepted but not expected to"
+      );
+
+      result = FALSE;
+    }
+    else if(check_certificate_data.did_query == FALSE &&
+            desc->expectation != INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT)
     {
       g_set_error(
         error,
@@ -355,19 +652,34 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
   }
   else
   {
-    g_assert(conn_error != NULL);
+    g_assert(check_certificate_data.did_query || conn_error != NULL);
 
     /* TODO: The certificate verification result is not preserved at
      * the moment. We could change this in
      * inf_xmpp_connection_certificate_verify_cancel such that the existing
      * error is used if any, or otherwise our own is created. */
-    if(conn_error->domain != inf_xmpp_connection_error_quark() &&
+    if(conn_error != NULL &&
+       conn_error->domain != inf_xmpp_connection_error_quark() &&
        conn_error->code != INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED)
     {
-      if(error) *error = g_error_copy(conn_error);
+      g_propagate_error(error, conn_error);
+      conn_error = NULL;
       result = FALSE;
     }
-    else if(desc->expectation != INF_TEST_CERTIFICATE_VALIDATE_EXPECT_REJECT)
+    else if(check_certificate_data.did_query == TRUE &&
+            desc->expectation != INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_REJECT)
+    {
+      g_set_error(
+        error,
+        inf_test_certificate_validate_error(),
+        2,
+        "Certificate queried and rejected but not expected to"
+      );
+
+      result = FALSE;
+    }
+    else if(check_certificate_data.did_query == FALSE &&
+            desc->expectation != INF_TEST_CERTIFICATE_VALIDATE_EXPECT_REJECT)
     {
       g_set_error(
         error,
@@ -379,9 +691,77 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
       result = FALSE;
     }
 
-    g_error_free(conn_error);
+    if(conn_error != NULL)
+    {
+      g_error_free(conn_error);
+      conn_error = NULL;
+    }
   }
 
+  /* If we got the expected result, check whether the host was correctly
+   * pinned or not. */
+  if(result == TRUE)
+  {
+    pinned = inf_cert_util_read_certificate_map(pinned_file, error);
+    if(pinned == NULL)
+    {
+      result = FALSE;
+    }
+    else
+    {
+      pinned_cert = g_hash_table_lookup(pinned, desc->hostname);
+
+      if(pinned_cert != NULL)
+      {
+        g_object_get(
+          G_OBJECT(client),
+          "remote-certificate", &current_cert,
+          NULL
+        );
+
+        cert_equal = inf_cert_util_compare_fingerprint(
+          pinned_cert,
+          inf_certificate_chain_get_own_certificate(current_cert),
+          &conn_error
+        );
+
+        inf_certificate_chain_unref(current_cert);
+      }
+
+      if(conn_error != NULL)
+      {
+        g_propagate_error(error, conn_error);
+        conn_error = NULL;
+      }
+      else if(cert_equal == TRUE && desc->expect_pinned == FALSE)
+      {
+        g_set_error(
+          error,
+          inf_test_certificate_validate_error(),
+          4,
+          "Certificate was pinned but not expected to"
+        );
+
+        result = FALSE;
+      }
+      else if(pinned_cert == NULL && desc->expect_pinned == TRUE)
+      {
+        g_set_error(
+          error,
+          inf_test_certificate_validate_error(),
+          5,
+          "Certificate was not pinned but expected to"
+        );
+
+        result = FALSE;
+      }
+
+      g_hash_table_destroy(pinned);
+    }
+  }
+
+  g_unlink(pinned_file);
+  g_free(pinned_file);
   g_object_unref(xmpp_manager);
   g_object_unref(verify);
   g_object_unref(server);
