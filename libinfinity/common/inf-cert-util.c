@@ -71,7 +71,7 @@ inf_cert_util_memrchr(void* buf,
   pos = buf + len;
   end = buf;
 
-  while(pos >= end)
+  while(pos > end)
   {
     if(*(pos - 1) == c)
       return pos - 1;
