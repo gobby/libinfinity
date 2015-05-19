@@ -26,6 +26,7 @@
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-xmpp-manager.h>
+#include <libinfinity/common/inf-init.h>
 
 #include <gnutls/x509.h>
 #include <gnutls/gnutls.h>
@@ -777,6 +778,14 @@ main(int argc,
   const InfTestCertificateValidateDesc* test;
   GError* error;
   int res;
+
+  error = NULL;
+  if(inf_init(&error) == FALSE)
+  {
+    fprintf(stderr, "%s\n", error->message);
+    g_error_free(error);
+    return EXIT_FAILURE;
+  }
 
   /* So that the certificate files are found */
   chdir("certs");
