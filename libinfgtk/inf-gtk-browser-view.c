@@ -2048,6 +2048,12 @@ inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
 
     switch(status)
     {
+    case INF_GTK_BROWSER_MODEL_INVALID:
+      /* This can happen when the cell data func is called between the
+       * resetting of an item and its removal from the tree. But in any case
+       * it will be removed soon, so no need to do anything here. */
+      icon_name = NULL;
+      break;
     case INF_GTK_BROWSER_MODEL_DISCONNECTED:
     case INF_GTK_BROWSER_MODEL_DISCOVERED:
     case INF_GTK_BROWSER_MODEL_RESOLVING:
@@ -2301,6 +2307,11 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
 
     switch(status)
     {
+    case INF_GTK_BROWSER_MODEL_INVALID:
+      /* This can happen when the cell data func is called between the
+       * resetting of an item and its removal from the tree. But in any case
+       * it will be removed soon, so no need to do anything here. */
+      break;
     case INF_GTK_BROWSER_MODEL_DISCOVERED:
     case INF_GTK_BROWSER_MODEL_DISCONNECTED:
       g_object_set(

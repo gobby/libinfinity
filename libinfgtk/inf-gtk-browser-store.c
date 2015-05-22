@@ -524,6 +524,11 @@ inf_gtk_browser_store_remove_item(InfGtkBrowserStore* store,
   /* Note we need to reset the browser before we unlink because
    * inf_gtk_browser_store_item_set_browser() requires item still being
    * linked for change notifications. */
+  /* TODO: This is a bit cumbersome. A better way might be to be able for
+   * the iter parameter to be NULL to indicate that an entry with
+   * its browser has been deleted. However, this would still need to do
+   * lots of the unregistration that is now happening in
+   * inf_gtk_browser_store_item_set_browser(). */
   if(item->browser != NULL)
   {
     inf_gtk_browser_store_item_set_browser(store, item, path, NULL);
