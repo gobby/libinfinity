@@ -42,11 +42,11 @@ typedef struct _InfGtkCertificateView InfGtkCertificateView;
 typedef struct _InfGtkCertificateViewClass InfGtkCertificateViewClass;
 
 struct _InfGtkCertificateViewClass {
-  GtkNotebookClass parent_class;
+  GtkGridClass parent_class;
 };
 
 struct _InfGtkCertificateView {
-  GtkNotebook parent;
+  GtkGrid parent;
 };
 
 GType

@@ -36,8 +36,6 @@ G_BEGIN_DECLS
 #define INF_GTK_IS_CERTIFICATE_DIALOG_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_GTK_TYPE_CERTIFICATE_DIALOG))
 #define INF_GTK_CERTIFICATE_DIALOG_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_GTK_TYPE_CERTIFICATE_DIALOG, InfGtkCertificateDialogClass))
 
-#define INF_GTK_TYPE_CERTIFICATE_DIALOG_FLAGS           (inf_gtk_certificate_dialog_flags_get_type())
-
 typedef struct _InfGtkCertificateDialog InfGtkCertificateDialog;
 typedef struct _InfGtkCertificateDialogClass InfGtkCertificateDialogClass;
 
