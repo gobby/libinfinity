@@ -1355,17 +1355,49 @@ inf_adopted_session_set_xml_user_props(InfSession* session,
                                        xmlNodePtr xml)
 {
   InfSessionClass* parent_class;
+  InfAdoptedSessionPrivate* priv;
   const GParameter* time;
   InfAdoptedStateVector* vector;
   gchar* time_string;
 
+  const GParameter* id_param;
+  guint id;
+  GSList* item;
+  InfAdoptedSessionLocalUser* local_user;
+
   parent_class = INF_SESSION_CLASS(inf_adopted_session_parent_class);
   parent_class->set_xml_user_props(session, params, n_params, xml);
+
+  priv = INF_ADOPTED_SESSION_PRIVATE(INF_ADOPTED_SESSION(session));
 
   time = inf_session_lookup_user_property(params, n_params, "vector");
   if(time != NULL)
   {
-    vector = (InfAdoptedStateVector*)g_value_get_boxed(&time->value);
+    /* If this is a local user, use last_send_vector instead of the user's
+     * vector, so that subsequent differential updates are consistent. */
+    vector = NULL;
+    id_param = inf_session_lookup_user_property(params, n_params, "id");
+
+    if(id_param != NULL)
+    {
+      id = g_value_get_uint(&id_param->value);
+      for(item = priv->local_users; item != NULL; item = item->next)
+      {
+        local_user = (InfAdoptedSessionLocalUser*)item->data;
+        if(inf_user_get_id(INF_USER(local_user->user)) == id)
+        {
+          vector = local_user->last_send_vector;
+          break;
+        }
+      }
+    }
+
+    if(vector == NULL)
+    {
+      /* remote user, or a user join request */
+      vector = (InfAdoptedStateVector*)g_value_get_boxed(&time->value);
+    }
+
     time_string = inf_adopted_state_vector_to_string(vector);
     inf_xml_util_set_attribute(xml, "time", time_string);
     g_free(time_string);
