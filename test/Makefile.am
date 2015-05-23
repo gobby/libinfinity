@@ -25,7 +25,7 @@ noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
 	inf-test-text-cleanup inf-test-text-recover \
 	inf-test-text-replay inf-test-reduce-replay inf-test-mass-join \
 	inf-test-text-fixline inf-test-traffic-replay \
-	inf-test-certificate-validate
+	inf-test-certificate-validate inf-test-text-quick-write
 
 if WITH_INFTEXTGTK
 noinst_PROGRAMS += inf-test-gtk-browser
@@ -208,3 +208,10 @@ inf_test_certificate_validate_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	${infinity_LIBS}
 
+inf_test_text_quick_write_SOURCES = \
+	inf-test-text-quick-write.c
+
+inf_test_text_quick_write_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
+	${inftext_LIBS} ${infinity_LIBS}
