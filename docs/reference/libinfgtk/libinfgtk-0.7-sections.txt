@@ -175,6 +175,27 @@ inf_gtk_certificate_manager_get_type
 </SECTION>
 
 <SECTION>
+<FILE>inf-gtk-connection-view</FILE>
+<TITLE>InfGtkConnectionView</TITLE>
+InfGtkConnectionView
+InfGtkConnectionViewClass
+inf_gtk_connection_view_new
+inf_gtk_connection_view_new_with_connection
+inf_gtk_connection_view_set_connection
+<SUBSECTION Standard>
+INF_GTK_CONNECTION_VIEW
+INF_GTK_CONNECTION_VIEW_CLASS
+INF_GTK_CONNECTION_VIEW_GET_CLASS
+INF_GTK_IS_CONNECTION_VIEW
+INF_GTK_IS_CONNECTION_VIEW_CLASS
+INF_GTK_TYPE_CONNECTION_VIEW
+INF_GTK_TYPE_CONNECTION_VIEW_FLAGS
+inf_gtk_connection_view_get_type
+</SECTION>
+
+
+
+<SECTION>
 <FILE>inf-gtk-certificate-view</FILE>
 <TITLE>InfGtkCertificateView</TITLE>
 InfGtkCertificateView

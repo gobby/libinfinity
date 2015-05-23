@@ -27,6 +27,7 @@ headers = \
 	inf-gtk-certificate-manager.h \
 	inf-gtk-certificate-view.h \
 	inf-gtk-chat.h \
+	inf-gtk-connection-view.h \
 	inf-gtk-io.h \
 	inf-gtk-permissions-dialog.h \
 	inf-gtk-resources.h
@@ -43,6 +44,7 @@ sources = \
 	inf-gtk-certificate-manager.c \
 	inf-gtk-certificate-view.c \
 	inf-gtk-chat.c \
+	inf-gtk-connection-view.c \
 	inf-gtk-io.c \
 	inf-gtk-permissions-dialog.c \
 	inf-gtk-resources.c
@@ -53,6 +55,7 @@ resources = \
 	resources/ui/infgtkcertificatedialog.ui \
 	resources/ui/infgtkcertificateview.ui \
 	resources/ui/infgtkchat.ui \
+	resources/ui/infgtkconnectionview.ui \
 	resources/ui/infgtkpermissionsdialog.ui
 
 inf-gtk-resources.h: resources/infgtk.gresources.xml
