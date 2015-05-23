@@ -42,6 +42,7 @@ struct _InfGtkCertificateViewPrivate {
 
   GtkWidget* sha1_fingerprint;
   GtkWidget* sha256_fingerprint;
+  GtkWidget* signature_algorithm;
 };
 
 enum {
@@ -248,6 +249,12 @@ inf_gtk_certificate_view_class_init(
     sha256_fingerprint
   );
 
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    signature_algorithm
+  );
+
   g_object_class_install_property(
     object_class,
     PROP_CERTIFICATE,
@@ -325,6 +332,7 @@ inf_gtk_certificate_view_set_certificate(InfGtkCertificateView* view,
 {
   InfGtkCertificateViewPrivate* priv;
   gchar* value;
+  int algo;
 
   g_return_if_fail(INF_GTK_IS_CERTIFICATE_VIEW(view));
 
@@ -347,6 +355,8 @@ inf_gtk_certificate_view_set_certificate(InfGtkCertificateView* view,
 
     gtk_label_set_text(GTK_LABEL(priv->sha1_fingerprint), NULL);
     gtk_label_set_text(GTK_LABEL(priv->sha256_fingerprint), NULL);
+
+    gtk_label_set_text(GTK_LABEL(priv->signature_algorithm), NULL);
   }
   else
   {
@@ -420,6 +430,22 @@ inf_gtk_certificate_view_set_certificate(InfGtkCertificateView* view,
       value
     );
     g_free(value);
+
+    algo = gnutls_x509_crt_get_signature_algorithm(cert);
+    if(algo < 0)
+    {
+      inf_gtk_certificate_view_set_label(
+        GTK_LABEL(priv->signature_algorithm),
+        gnutls_strerror(algo)
+      );
+    }
+    else
+    {
+      inf_gtk_certificate_view_set_label(
+        GTK_LABEL(priv->signature_algorithm),
+        gnutls_sign_get_name(algo)
+      );
+    }
   }
 
   g_object_notify(G_OBJECT(view), "certificate");
