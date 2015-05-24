@@ -1388,21 +1388,6 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
 static void
 inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
 {
-  static const guint xmpp_connection_dh_bits = 1024;
-
-#if 0
-  static const int xmpp_connection_protocol_priority[] =
-    { GNUTLS_TLS1, GNUTLS_SSL3, 0 };
-  static const int xmpp_connection_kx_priority[] =
-    { GNUTLS_KX_RSA, 0 };
-  static const int xmpp_connection_cipher_priority[] =
-    { GNUTLS_CIPHER_3DES_CBC, GNUTLS_CIPHER_ARCFOUR, 0 };
-  static const int xmpp_connection_comp_priority[] =
-    { GNUTLS_COMP_ZLIB, GNUTLS_COMP_NULL, 0 };
-  static const int xmpp_connection_mac_priority[] =
-    { GNUTLS_MAC_SHA, GNUTLS_MAC_MD5, 0 };
-#endif
-
   InfXmppConnectionPrivate* priv;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -1444,29 +1429,24 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
     break;
   }
 
-  gnutls_set_default_priority(priv->session);
-
-#if 0
-  gnutls_protocol_set_priority(
-    priv->session,
-    xmpp_connection_protocol_priority
-  );
-  gnutls_cipher_set_priority(priv->session, xmpp_connection_cipher_priority);
-  gnutls_compression_set_priority(
-    priv->session,
-    xmpp_connection_comp_priority
-  );
-  gnutls_kx_set_priority(priv->session, xmpp_connection_kx_priority);
-  gnutls_mac_set_priority(priv->session, xmpp_connection_mac_priority);
-#endif
+  /* Use the default priority, but make sure that DHE-RSA is preferred
+   * over RSA. At some point during the GnuTLS 3.x cycle, this was changed
+   * due to a compatibility issue: if the server does not offer long
+   * enough primes, the client cannot recover and the handshake would fail.
+   *
+   * However, this is not a practical problem for us at the moment, since
+   * infinoted and Gobby always generate 2048-bit DH primes. If this becomes
+   * an issue in the future, we can revisit this. However, note that the
+   * default priority string prefers ECDH over DH anyway, so if the server
+   * supports ECDH, the client will probably choose that and this is not an
+   * issue either. */
+  gnutls_priority_set_direct(priv->session, "NORMAL:-RSA:+RSA", NULL);
 
   gnutls_credentials_set(
     priv->session,
     GNUTLS_CRD_CERTIFICATE,
     inf_certificate_credentials_get(priv->creds)
   );
-
-  gnutls_dh_set_prime_bits(priv->session, xmpp_connection_dh_bits);
 
   gnutls_transport_set_ptr(priv->session, xmpp);
 
