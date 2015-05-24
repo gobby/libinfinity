@@ -4388,6 +4388,135 @@ inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp)
 }
 
 /**
+ * inf_xmpp_connection_get_kx_algorithm:
+ * @xmpp: A #InfXmppConnection.
+ *
+ * Returns the key exchange algorithm used for this connection. This function
+ * can only be used if inf_xmpp_connection_get_tls_enabled() returns true.
+ *
+ * Returns: The key exchange algorithm used.
+ */
+gnutls_kx_algorithm_t
+inf_xmpp_connection_get_kx_algorithm(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+
+  g_return_val_if_fail(INF_IS_XMPP_CONNECTION(xmpp), GNUTLS_KX_UNKNOWN);
+
+  g_return_val_if_fail(
+    inf_xmpp_connection_get_tls_enabled(xmpp),
+    GNUTLS_KX_UNKNOWN
+  );
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  return gnutls_kx_get(priv->session);
+}
+
+/**
+ * inf_xmpp_connection_get_cipher_algorithm:
+ * @xmpp: A #InfXmppConnection.
+ *
+ * Returns the cipher algorithm used for this connection. This function can
+ * only be used if inf_xmpp_connection_get_tls_enabled() returns true.
+ *
+ * Returns: The cipher algorithm used.
+ */
+gnutls_cipher_algorithm_t
+inf_xmpp_connection_get_cipher_algorithm(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+
+  g_return_val_if_fail(INF_IS_XMPP_CONNECTION(xmpp), GNUTLS_CIPHER_UNKNOWN);
+
+  g_return_val_if_fail(
+    inf_xmpp_connection_get_tls_enabled(xmpp),
+    GNUTLS_CIPHER_UNKNOWN
+  );
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  return gnutls_cipher_get(priv->session);
+}
+
+/**
+ * inf_xmpp_connection_get_mac_algorithm:
+ * @xmpp: A #InfXmppConnection.
+ *
+ * Returns the MAC algorithm used for this connection. This function can
+ * only be used if inf_xmpp_connection_get_tls_enabled() returns true.
+ *
+ * Returns: The MAC algorithm used.
+ */
+gnutls_mac_algorithm_t
+inf_xmpp_connection_get_mac_algorithm(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+
+  g_return_val_if_fail(INF_IS_XMPP_CONNECTION(xmpp), GNUTLS_MAC_UNKNOWN);
+
+  g_return_val_if_fail(
+    inf_xmpp_connection_get_tls_enabled(xmpp),
+    GNUTLS_MAC_UNKNOWN
+  );
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  return gnutls_mac_get(priv->session);
+}
+
+/**
+ * inf_xmpp_connection_get_tls_protocol:
+ * @xmpp: A #InfXmppConnection.
+ *
+ * Returns the TLS protocol version used for this connection. This function
+ * can only be used if inf_xmpp_connection_get_tls_enabled() returns true.
+ *
+ * Returns: The TLS protocol version used.
+ */
+gnutls_protocol_t
+inf_xmpp_connection_get_tls_protocol(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+
+  g_return_val_if_fail(INF_IS_XMPP_CONNECTION(xmpp), GNUTLS_VERSION_UNKNOWN);
+
+  g_return_val_if_fail(
+    inf_xmpp_connection_get_tls_enabled(xmpp),
+    GNUTLS_VERSION_UNKNOWN
+  );
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  return gnutls_protocol_get_version(priv->session);
+}
+
+/**
+ * inf_xmpp_connection_get_dh_prime_bits:
+ * @xmpp: A #InfXmppConnection.
+ *
+ * Returns the number of prime bits used for the Diffie-Hellman group if
+ * a key exchange algorithm based on Diffie-Hellman is used. Otherwise, 0
+ * is returned. This function can only be used if
+ * inf_xmpp_connection_get_tls_enabled() returns true.
+ *
+ * Returns: The number of Diffie-Hellman prime bits.
+ */
+guint
+inf_xmpp_connection_get_dh_prime_bits(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+  int bits;
+
+  g_return_val_if_fail(INF_IS_XMPP_CONNECTION(xmpp), 0);
+  g_return_val_if_fail(inf_xmpp_connection_get_tls_enabled(xmpp), 0);
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  bits = gnutls_dh_get_prime_bits(priv->session);
+
+  /* This is essentially a workaround since some GnuTLS versions report an
+   * error instead of 0 when no DH key exchange was used. */
+  if(bits < 0) bits = 0;
+  return (guint)bits;
+}
+
+/**
  * inf_xmpp_connection_set_certificate_callback:
  * @xmpp: A #InfXmppConnection.
  * @req: (type int): Whether to request a client certificate from the peer.

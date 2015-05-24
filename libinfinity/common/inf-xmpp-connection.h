@@ -335,6 +335,21 @@ inf_xmpp_connection_get_own_certificate(InfXmppConnection* xmpp);
 InfCertificateChain*
 inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp);
 
+gnutls_kx_algorithm_t
+inf_xmpp_connection_get_kx_algorithm(InfXmppConnection* xmpp);
+
+gnutls_cipher_algorithm_t
+inf_xmpp_connection_get_cipher_algorithm(InfXmppConnection* xmpp);
+
+gnutls_mac_algorithm_t
+inf_xmpp_connection_get_mac_algorithm(InfXmppConnection* xmpp);
+
+gnutls_protocol_t
+inf_xmpp_connection_get_tls_protocol(InfXmppConnection* xmpp);
+
+guint
+inf_xmpp_connection_get_dh_prime_bits(InfXmppConnection* xmpp);
+
 void
 inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
                                              gnutls_certificate_request_t req,
