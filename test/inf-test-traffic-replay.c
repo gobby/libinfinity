@@ -169,6 +169,8 @@ inf_test_traffic_replay_get_next_message(InfTestTrafficReplayConnection* conn,
   struct tm tm;
   char* end;
 
+  gulong msecs;
+
   InfTestTrafficReplayMessageType type;
   xmlDocPtr xml;
   GString* str;
@@ -193,8 +195,8 @@ inf_test_traffic_replay_get_next_message(InfTestTrafficReplayConnection* conn,
   }
   
   /* Parse timestamp */
-  end = strptime(&line[1], "%a %d %b %Y %H:%M:%S %p %Z", &tm);
-  if(end == NULL || *end != ' ') /* for some reason strptime eats "]" */
+  end = strptime(&line[1], "%a %d %b %Y %I:%M:%S %p %Z", &tm);
+  if(end == NULL || *end != ' ' || *(end+1) != '.')
   {
     g_set_error(
       error,
@@ -206,6 +208,24 @@ inf_test_traffic_replay_get_next_message(InfTestTrafficReplayConnection* conn,
     free(line);
     return FALSE;
   }
+
+  errno = 0;
+  msecs = strtoul(&end[2], &end, 10);
+  if(errno != 0 || *end != ']' || msecs >= 1000000)
+  {
+    g_set_error(
+      error,
+      inf_test_traffic_replay_error_quark(),
+      INF_TEST_TRAFFIC_REPLAY_ERROR_INVALID_LINE,
+      "Failed to parse timestamp"
+    );
+
+    free(line);
+    return FALSE;
+  }
+
+  /* skip ']' */
+  ++end;
 
   /* This seems to be set at random -- for the moment assume there are no
    * timestamps with different timezones */
@@ -293,7 +313,7 @@ inf_test_traffic_replay_get_next_message(InfTestTrafficReplayConnection* conn,
   free(line);
 
   message = g_slice_new(InfTestTrafficReplayMessage);
-  message->timestamp = (gint64)mktime(&tm) * 1000000 + 0;
+  message->timestamp = (gint64)mktime(&tm) * 1000000 + msecs;
   message->type = type;
   if(type == INF_TEST_TRAFFIC_REPLAY_MESSAGE_INCOMING ||
      type == INF_TEST_TRAFFIC_REPLAY_MESSAGE_OUTGOING)
