@@ -2701,6 +2701,7 @@ infd_directory_lookup_account(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectoryTransientAccount* transient;
   InfAclAccount* result;
+  InfAclAccount* result_copy;
   guint i;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -2735,8 +2736,21 @@ infd_directory_lookup_account(InfdDirectory* directory,
     return NULL;
   }
 
-  if(transient_index != NULL) *transient_index = priv->n_transient_accounts;
-  return result;
+  if(transient_index != NULL)
+    *transient_index = priv->n_transient_accounts;
+
+  /* Note that the return value that we got from
+   * infd_account_storage_lookup_accounts() is actually an array, and
+   * therefore needs to be freed with inf_acl_account_array_free(). However,
+   * we only return a single account that we want to be freed with
+   * inf_acl_account_free(). Therefore, we are making a copy here -- note
+   * that the two free functions are in fact different if GSlice is enabled,
+   * since an array of InfAclAccounts in allocated with g_malloc, while a
+   * single InfAclAccount is allocated with GSlice. */
+  result_copy = inf_acl_account_copy(result);
+  inf_acl_account_array_free(result, 1);
+
+  return result_copy;
 }
 
 static InfAclAccountId
