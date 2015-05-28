@@ -6087,9 +6087,9 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
       /* Only if we have already a proxy we could not have a request here */
       g_assert(request != NULL);
       inf_request_fail(INF_REQUEST(request), local_error);
-      g_error_free(local_error);
       g_object_unref(request);
       g_free(seq);
+      g_propagate_error(error, local_error);
       return FALSE;
     }
   }
