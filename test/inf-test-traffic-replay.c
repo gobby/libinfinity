@@ -404,7 +404,7 @@ inf_test_traffic_replay_connection_check_message(
     fprintf(
       stderr,
       "[WARNING] [%s] Mismatch between expected and received: "
-      "\"%s\" vs. \"%s\", ignoring...\n",
+      "\n\n\"%s\"\n\nvs.\n\n\"%s\"\n",
       conn->name,
       (const gchar*)xmlBufferContent(expected_buffer),
       (const gchar*)xmlBufferContent(received_buffer)
