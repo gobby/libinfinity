@@ -2242,7 +2242,7 @@ inf_xmpp_connection_sasl_suggest_mechanism(InfXmppConnection* xmpp,
       }
 
       if(strncmp(iter, "ANONYMOUS",
-                 MAX((size_t) (end - iter), sizeof("ANONYMOUS") - 1) == 0))
+                 MAX((size_t) (end - iter), sizeof("ANONYMOUS") - 1)) == 0)
       {
         suggestion = "ANONYMOUS";
         break;
