@@ -426,7 +426,7 @@ inf_keepalive_apply(const InfKeepalive* keepalive,
 
   /* Load default values for those settings which are switched
    * back to default */
-  if(current_mask & ~keepalive->mask != 0)
+  if((current_mask & ~keepalive->mask) != 0)
     inf_keepalive_load_default(&set, current_mask & ~keepalive->mask);
 
 #if defined(G_OS_WIN32)
