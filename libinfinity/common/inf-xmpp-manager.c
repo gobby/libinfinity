@@ -49,7 +49,7 @@
  * The XMPP manager can also handle connections whose address is still to be
  * looked up. Such connections are looked up by the hostname given to the
  * name resolver. Once the hostname has been looked up, and if another
- * connection with the same addressand port number exists already, the new
+ * connection with the same address and port number exists already, the new
  * connection is removed in favor of the already existing one.
  */
 
@@ -84,14 +84,6 @@ struct _InfXmppManagerConnectionInfo {
 
   InfXmppManagerKey** keys;
   guint n_keys;
-};
-
-typedef struct _InfXmppManagerKeyChangedForeachFuncData
-  InfXmppManagerKeyChangedForeachFuncData;
-struct _InfXmppManagerKeyChangedForeachFuncData {
-  InfTcpConnection* connection;
-  InfXmppManagerConnectionInfo* info;
-  const InfXmppManagerKey* key;
 };
 
 typedef struct _InfXmppManagerPrivate InfXmppManagerPrivate;
