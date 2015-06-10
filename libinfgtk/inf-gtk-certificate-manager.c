@@ -249,6 +249,13 @@ inf_gtk_certificate_manager_check_certificate(
   label = gtk_label_new(text);
   gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
   gtk_label_set_max_width_chars(GTK_LABEL(label), 75);
+  gtk_widget_set_halign(GTK_WIDGET(label), GTK_ALIGN_START);
+  gtk_widget_set_valign(GTK_WIDGET(label), GTK_ALIGN_START);
+#if GTK_CHECK_VERSION(3,16,0)
+  gtk_label_set_xalign(GTK_WIDGET(label), 0.0);
+#else
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.0);
+#endif
   gtk_widget_show(label);
   g_free(text);
 

@@ -610,7 +610,7 @@ inf_gtk_connection_view_set_connection(InfGtkConnectionView* view,
       g_free(text);
 
       text = g_markup_printf_escaped("<i>%s</i>", _("N/A"));
-      gtk_label_set_text(GTK_LABEL(priv->cipher_suite), text);
+      gtk_label_set_markup(GTK_LABEL(priv->cipher_suite), text);
       gtk_label_set_markup(GTK_LABEL(priv->dh_prime_bits), text);
       g_free(text);
 

@@ -64,7 +64,7 @@ enum {
 
 static guint acl_sheet_view_signals[LAST_SIGNAL];
 
-G_DEFINE_TYPE_WITH_CODE(InfGtkAclSheetView, inf_gtk_acl_sheet_view, GTK_TYPE_BOX,
+G_DEFINE_TYPE_WITH_CODE(InfGtkAclSheetView, inf_gtk_acl_sheet_view, GTK_TYPE_GRID,
   G_ADD_PRIVATE(InfGtkAclSheetView))
 
 static void

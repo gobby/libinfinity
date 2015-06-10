@@ -33,9 +33,9 @@
   <object class="GtkTextBuffer" id="chat_buffer">
     <property name="tag-table">chat_tag_table</property>
   </object>
-  <template class="InfGtkChat" parent="GtkBox">
+  <template class="InfGtkChat" parent="GtkGrid">
     <property name="orientation">vertical</property>
-    <property name="spacing">6</property>
+    <property name="row-spacing">6</property>
     <child>
       <object class="GtkScrolledWindow" id="scroll_main">
         <property name="visible">True</property>
@@ -54,32 +54,37 @@
             <property name="wrap-mode">word-char</property>
             <property name="indent">-12</property>
             <property name="buffer">chat_buffer</property>
+            <property name="hexpand">True</property>
+            <property name="hexpand-set">True</property>
+            <property name="vexpand">True</property>
+            <property name="vexpand-set">True</property>
           </object>
         </child>
       </object>
       <packing>
-        <property name="expand">True</property>
-        <property name="fill">True</property>
-        <property name="position">0</property>
+        <property name="left-attach">0</property>
+        <property name="top-attach">0</property>
       </packing>
     </child>
     <child>
-      <object class="GtkBox" id="entry_box">
+      <object class="GtkGrid" id="entry_grid">
+        <property name="orientation">horizontal</property>
         <property name="visible">True</property>
-        <property name="spacing">12</property>
+        <property name="column-spacing">12</property>
         <child>
           <object class="GtkEntry" id="chat_entry">
             <property name="visible">True</property>
             <property name="sensitive">False</property>
             <property name="truncate-multiline">False</property>
+            <property name="hexpand">True</property>
+            <property name="hexpand-set">True</property>
             <signal name="activate" handler="inf_gtk_chat_entry_activate_cb" swapped="no" />
             <signal name="changed" handler="inf_gtk_chat_entry_changed_cb" swapped="no" />
             <signal name="key-press-event" handler="inf_gtk_chat_entry_key_press_event_cb" swapped="no" />
           </object>
           <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
           </packing>
         </child>
         <child>
@@ -89,16 +94,14 @@
             <signal name="clicked" handler="inf_gtk_chat_send_button_clicked_cb" swapped="no" />
           </object>
           <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
+            <property name="left-attach">1</property>
+            <property name="top-attach">0</property>
           </packing>
         </child>
       </object>
       <packing>
-        <property name="expand">False</property>
-        <property name="fill">False</property>
-        <property name="position">1</property>
+        <property name="left-attach">0</property>
+        <property name="top-attach">1</property>
       </packing>
     </child>
   </template>

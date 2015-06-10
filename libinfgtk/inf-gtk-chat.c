@@ -95,7 +95,7 @@ enum {
 
 #define INF_GTK_CHAT_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_CHAT, InfGtkChatPrivate))
 
-G_DEFINE_TYPE_WITH_CODE(InfGtkChat, inf_gtk_chat, GTK_TYPE_BOX,
+G_DEFINE_TYPE_WITH_CODE(InfGtkChat, inf_gtk_chat, GTK_TYPE_GRID,
   G_ADD_PRIVATE(InfGtkChat))
 
 /*

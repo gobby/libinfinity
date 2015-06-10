@@ -46,7 +46,7 @@ typedef struct _InfGtkChatClass InfGtkChatClass;
  */
 struct _InfGtkChatClass {
   /*< private >*/
-  GtkVBoxClass parent_class;
+  GtkGridClass parent_class;
 };
 
 /**
@@ -57,7 +57,7 @@ struct _InfGtkChatClass {
  */
 struct _InfGtkChat {
   /*< private >*/
-  GtkVBox parent;
+  GtkGrid parent;
 };
 
 GType

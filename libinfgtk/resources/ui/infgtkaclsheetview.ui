@@ -7,9 +7,9 @@
       <column type="InfAclSetting"/>
     </columns>
   </object>
-  <template class="InfGtkAclSheetView" parent="GtkBox">
+  <template class="InfGtkAclSheetView" parent="GtkGrid">
     <property name="orientation">vertical</property>
-    <property name="spacing">6</property>
+    <property name="row-spacing">6</property>
     <child>
       <object class="GtkScrolledWindow" id="scroll_main">
         <property name="visible">True</property>
@@ -19,6 +19,10 @@
           <object class="GtkTreeView" id="tree_view">
             <property name="visible">True</property>
             <property name="model">sheet_store</property>
+            <property name="hexpand">True</property>
+            <property name="hexpand-set">True</property>
+            <property name="vexpand">True</property>
+            <property name="vexpand-set">True</property>
             <child internal-child="selection">
               <object class="GtkTreeSelection" id="treeview-selection1"/>
             </child>
@@ -74,9 +78,8 @@
         </child>
       </object>
       <packing>
-        <property name="expand">True</property>
-        <property name="fill">True</property>
-        <property name="position">0</property>
+        <property name="left-attach">0</property>
+        <property name="top-attach">0</property>
       </packing>
     </child>
   </template>

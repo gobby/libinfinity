@@ -48,7 +48,7 @@ typedef struct _InfGtkAclSheetViewClass InfGtkAclSheetViewClass;
  */
 struct _InfGtkAclSheetViewClass {
   /*< private >*/
-  GtkVBoxClass parent_class;
+  GtkGridClass parent_class;
 
   /*< public >*/
   void (*sheet_changed)(InfGtkAclSheetView* view);
@@ -62,7 +62,7 @@ struct _InfGtkAclSheetViewClass {
  */
 struct _InfGtkAclSheetView {
   /*< private >*/
-  GtkVBox parent;
+  GtkGrid parent;
 };
 
 GType
