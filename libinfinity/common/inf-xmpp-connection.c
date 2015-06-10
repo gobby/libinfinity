@@ -2226,6 +2226,7 @@ inf_xmpp_connection_sasl_suggest_mechanism(InfXmppConnection* xmpp,
   gboolean has_mechanism;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  suggestion = NULL;
 
   if(priv->sasl_own_context != NULL)
   {
