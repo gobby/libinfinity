@@ -93,7 +93,7 @@ gsize inf_text_chunk_get_byte_index_utf8(InfTextChunk* self,
                                          guint offset)
 {
 #ifdef CHUNK_CHECK_INTEGRITY
-  g_assert(offset <= g_utf8_strlen(self, bytes));
+  g_assert(offset <= g_utf8_strlen(text, bytes));
 #endif
 
   return g_utf8_offset_to_pointer(text, offset) - text;
