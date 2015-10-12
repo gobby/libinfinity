@@ -184,6 +184,33 @@ inf_text_chunk_segment_cmp(gconstpointer first,
     return 1;
 }
 
+/* This is a special comparison function which is only used
+ * in inf_text_chunk_get_segment. It makes sure that when two segments
+ * have the same offset, the second one gets sorted behind. This ensures
+ * that the first segment in the sequence is never returned, since it
+ * always has offset 0, which is a precondition for the algorithm
+ * in inf_text_chunk_get_segment. See also libinfinity github issue #10. */
+static int
+inf_text_chunk_segment_cmp_for_get_segment(gconstpointer first,
+                                           gconstpointer second,
+                                           gpointer userdata)
+{
+  const InfTextChunkSegment* first_segment;
+  const InfTextChunkSegment* second_segment;
+
+  first_segment  = (const InfTextChunkSegment*)first;
+  second_segment = (const InfTextChunkSegment*)second;
+
+  g_return_val_if_fail(second != NULL && first != NULL, 0);
+
+  if (first_segment->offset < second_segment->offset)
+    return -1;
+  else if (first_segment->offset == second_segment->offset)
+    return -1;
+  else
+    return 1;
+}
+
 static guint
 inf_text_chunk_next_offset(InfTextChunk* self,
                            GSequenceIter* iter)
@@ -250,7 +277,7 @@ inf_text_chunk_get_segment(InfTextChunk* self,
   iter = g_sequence_search(
     self->segments,
     &key,
-    inf_text_chunk_segment_cmp,
+    inf_text_chunk_segment_cmp_for_get_segment,
     NULL
   );
 
