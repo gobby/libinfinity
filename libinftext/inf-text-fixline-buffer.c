@@ -587,9 +587,6 @@ inf_text_fixline_buffer_text_inserted_cb(InfTextBuffer* buffer,
   gint user_len;
 
   InfTextChunk* new_chunk;
-  gchar stext[16];
-  gchar* text;
-  guint i;
 
   priv = INF_TEXT_FIXLINE_BUFFER_PRIVATE(user_data);
 
