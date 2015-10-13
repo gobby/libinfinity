@@ -121,26 +121,6 @@ const InfTestCertificateValidateDesc TESTS[] = {
     FALSE,
     FALSE /* The old certificate will remain pinned, but not the new one */
   }, {
-    "expired-pinned-to-good-mismatch-query-accept",
-    "test-expire-good-key.pem",
-    "test-expire-good-crt.pem",
-    "ca-crt.pem",
-    "expire-test-mismatch.gobby.0x539.de",
-    "test-expire-crt.pem",
-    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_ACCEPT,
-    TRUE,
-    TRUE
-  }, {
-    "expired-pinned-to-good-mismatch-query-reject",
-    "test-expire-good-key.pem",
-    "test-expire-good-crt.pem",
-    "ca-crt.pem",
-    "expire-test-mismatch.gobby.0x539.de",
-    "test-expire-crt.pem",
-    INF_TEST_CERTIFICATE_VALIDATE_EXPECT_QUERY_REJECT,
-    FALSE,
-    FALSE /* The old certificate will remain pinned, but not the new one */
-  }, {
     "good",
     "test-good-key.pem",
     "test-good-crt.pem",
