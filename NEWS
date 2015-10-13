@@ -1,3 +1,11 @@
+libinfinity 0.6.7:
+	* Fix a possible crash when an entry is removed from the document
+	  browser.
+	* Fix a possible crash in infinoted when access control lists are
+	  enabled.
+	* Fix an assertion failure when operating with text documents and
+	  using glib 2.46 or newer.
+
 libinfinity 0.6.6:
 	* Fix certificates being only verified for expiration and other
 	  criteria such as weak algorithms if the CA is not trusted.
