@@ -11515,7 +11515,6 @@ infd_directory_create_acl_account(InfdDirectory* directory,
   InfAclAccountId account_id;
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), 0);
-  g_return_val_if_fail(account_id != 0, 0);
   g_return_val_if_fail(account_name != NULL, 0);
   g_return_val_if_fail(certificates != NULL || n_certificates == 0, 0);
 
