@@ -127,6 +127,14 @@ infd_filesystem_storage_set_root_directory(InfdFilesystemStorage* storage,
   }
   else
   {
+    if (!g_path_is_absolute(converted))
+    {
+      gchar* cwd = g_get_current_dir();
+      gchar* full_path = g_build_filename(cwd, converted, NULL);
+      g_free(cwd);
+      g_free(converted);
+      converted = full_path;
+    }
     if(!inf_file_util_create_directory(converted, 0755, &error))
     {
       g_warning(
