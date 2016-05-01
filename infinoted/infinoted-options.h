@@ -39,6 +39,7 @@ struct _InfinotedOptions {
   gboolean create_key;
   gboolean create_certificate;
   guint port;
+  InfIpAddress *listen_address;
   InfXmppConnectionSecurityPolicy security_policy;
   gchar* root_directory;
 

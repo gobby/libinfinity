@@ -249,18 +249,40 @@ infinoted_run_new(InfinotedStartup* startup,
   g_object_unref(xmpp_manager);
 #endif
 
-  address = inf_ip_address_new_raw6(INFINOTED_RUN_IPV6_ANY_ADDR);
-  run->xmpp6 = infinoted_run_create_server(run, startup, address, NULL);
-
   local_error = NULL;
-  run->xmpp4 = infinoted_run_create_server(run, startup, NULL, &local_error);
+
+  if(startup->options->listen_address != NULL)
+  {
+    /* Use manually specified listen address */
+    address = inf_ip_address_copy(startup->options->listen_address);
+
+    switch(inf_ip_address_get_family(address))
+    {
+    case INF_IP_ADDRESS_IPV4:
+      run->xmpp4 = infinoted_run_create_server(run, startup, address, &local_error);
+      run->xmpp6 = NULL;
+      break;
+    case INF_IP_ADDRESS_IPV6:
+      run->xmpp4 = NULL;
+      run->xmpp6 = infinoted_run_create_server(run, startup, address, &local_error);
+      break;
+    }
+  }
+  else
+  {
+    address = inf_ip_address_new_raw6(INFINOTED_RUN_IPV6_ANY_ADDR);
+
+    run->xmpp6 = infinoted_run_create_server(run, startup, address, NULL);
+    run->xmpp4 = infinoted_run_create_server(run, startup, NULL, &local_error);
+  }
 
   if(run->xmpp4 == NULL)
   {
     /* Ignore if we have an IPv6 server running */
     if(run->xmpp6 != NULL)
     {
-      g_error_free(local_error);
+      if(local_error != NULL)
+        g_error_free(local_error);
     }
     else
     {
@@ -272,7 +294,7 @@ infinoted_run_new(InfinotedStartup* startup,
       g_object_unref(run->directory);
       g_object_unref(run->io);
       g_slice_free(InfinotedRun, run);
-      return NULL;
+      run = NULL;
     }
   }
 

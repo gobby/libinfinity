@@ -525,6 +525,52 @@ infinoted_parameter_convert_port(gpointer out,
 }
 
 /**
+ * infinoted_parameter_convert_ip_address:
+ * @out: (type InfIpAddress**) (out): The pointer to the output #InfIpAddress
+ * location.
+ * @in: (type gchar**) (in): The pointer to the input string location.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Converts the string that @in points to to an #InfIpAddress* value. If the
+ * string can not be converted to an IP address, the functions fails and @error
+ * is set.
+ *
+ * This is a #InfinotedParameterConvertFunc function that can be used for
+ * fields of type #InfIpAddress*.
+ *
+ * Returns: %TRUE on success, or %FALSE otherwise.
+ */
+gboolean
+infinoted_parameter_convert_ip_address(gpointer out,
+                                       gpointer in,
+                                       GError** error)
+{
+  gchar** in_str;
+  InfIpAddress** out_val;
+
+  in_str = (gchar**) in;
+  out_val = (InfIpAddress**) out;
+
+  InfIpAddress *address = inf_ip_address_new_from_string(*in_str);
+
+  if(address == NULL)
+  {
+    g_set_error_literal(
+      error,
+      infinoted_parameter_error_quark(),
+      INFINOTED_PARAMETER_ERROR_INVALID_IP_ADDRESS,
+      _("Invalid IP address")
+    );
+
+    return FALSE;
+  }
+
+  *out_val = address;
+
+  return TRUE;
+}
+
+/**
  * infinoted_parameter_convert_nonnegative:
  * @out: (type guint*) (out): The pointer to the output #guint.
  * @in: (type gint*) (in): The pointer to the input #gint.

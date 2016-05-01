@@ -109,8 +109,9 @@ struct _InfinotedParameterTypedValue {
  * infinoted_parameter_convert_boolean(),
  * infinoted_parameter_convert_port(),
  * infinoted_parameter_convert_nonnegative(),
- * infinoted_parameter_convert_positive(), and
- * infinoted_parameter_convert_security_policy().
+ * infinoted_parameter_convert_positive(),
+ * infinoted_parameter_convert_security_policy() and
+ * infinoted_parameter_convert_ip_address().
  *
  * Returns: %TRUE on success or %FALSE if an error occurred.
  */
@@ -160,6 +161,8 @@ struct _InfinotedParameterInfo {
  * @INFINOTED_PARAMETER_ERROR_INVALID_SECURITY_POLICY: A security policy given
  * as a parameter is not valid. The only allowed values are
  * &quot;no-tls&quot;, &quot;allow-tls&quot;, and &quot;require-tls&quot;.
+ * @INFINOTED_PARAMETER_ERROR_INVALID_IP_ADDRESS: The value given as a
+ * parameter is not a valid IP address.
  *
  * Specifies the possible error conditions for errors in the
  * <literal>INFINOTED_PARAMETER_ERROR</literal> domain. These typically
@@ -169,7 +172,8 @@ typedef enum _InfinotedParameterError {
   INFINOTED_PARAMETER_ERROR_REQUIRED,
   INFINOTED_PARAMETER_ERROR_INVALID_NUMBER,
   INFINOTED_PARAMETER_ERROR_INVALID_FLAG,
-  INFINOTED_PARAMETER_ERROR_INVALID_SECURITY_POLICY
+  INFINOTED_PARAMETER_ERROR_INVALID_SECURITY_POLICY,
+  INFINOTED_PARAMETER_ERROR_INVALID_IP_ADDRESS
 } InfinotedParameterError;
 
 GQuark
@@ -239,6 +243,11 @@ infinoted_parameter_convert_flags(gpointer out,
                                   gpointer in,
                                   const GFlagsValue* values,
                                   GError** error);
+
+gboolean
+infinoted_parameter_convert_ip_address(gpointer out,
+                                       gpointer in,
+                                       GError** error);
 
 G_END_DECLS
 

@@ -93,6 +93,15 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
     N_("The TCP port number to listen on."),
     N_("PORT")
   }, {
+    "listen-address",
+    INFINOTED_PARAMETER_STRING,
+    0,
+    offsetof(InfinotedOptions, listen_address),
+    infinoted_parameter_convert_ip_address,
+    0,
+    N_("The IP address to listen on."),
+    N_("ADDRESS"),
+  }, {
     "security-policy",
     INFINOTED_PARAMETER_STRING,
     0,
@@ -962,6 +971,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->create_key = FALSE;
   options->create_certificate = FALSE;
   options->port = inf_protocol_get_default_port();
+  options->listen_address = NULL;
   options->security_policy = INF_XMPP_CONNECTION_SECURITY_ONLY_TLS;
   options->root_directory =
     g_build_filename(g_get_home_dir(), ".infinote", NULL);
@@ -1003,6 +1013,7 @@ infinoted_options_free(InfinotedOptions* options)
   g_free(options->certificate_file);
   g_free(options->certificate_chain_file);
   g_free(options->root_directory);
+  inf_ip_address_free(options->listen_address);
   g_strfreev(options->plugins);
   g_free(options->password);
 #ifdef LIBINFINITY_HAVE_PAM

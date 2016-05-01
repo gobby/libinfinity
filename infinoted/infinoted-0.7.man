@@ -43,6 +43,9 @@ Creates a new self\-signed certificate using the given key
 \fB\-p\fR, \fB\-\-port\-number\fR=\fIPORT\fR
 The port number to listen on
 .TP
+\fB\-\-listen\-address\fR=\fIADDRESS\fR
+The IP address to listen on
+.TP
 \fB\-\-security\-policy\fR=\fIno\-tls\fR|allow\-tls|require\-tls
 How to decide whether to use TLS
 .TP
