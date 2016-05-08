@@ -33,6 +33,7 @@
  **/
 
 #include <libinfinity/common/inf-cert-util.h>
+#include <libinfinity/common/inf-file-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 
@@ -604,7 +605,7 @@ inf_cert_util_write_private_key(gnutls_x509_privkey_t key,
     return FALSE;
   }
 
-  result = g_file_set_contents(
+  result = inf_file_util_write_private_data(
     filename,
     string->str,
     string->len,
@@ -980,7 +981,7 @@ inf_cert_util_write_certificate_with_key(gnutls_x509_privkey_t key,
     return FALSE;
   }
 
-  g_file_set_contents(
+  result = inf_file_util_write_private_data(
     filename,
     string->str,
     string->len,

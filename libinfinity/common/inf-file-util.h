@@ -94,6 +94,12 @@ gboolean
 inf_file_util_delete(const gchar* path,
                      GError** error);
 
+gboolean
+inf_file_util_write_private_data(const gchar* filename,
+                                 const void* data,
+                                 size_t length,
+                                 GError** error);
+
 G_END_DECLS
 
 #endif /* __INF_FILE_UTIL_H__ */

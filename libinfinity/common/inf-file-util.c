@@ -517,4 +517,76 @@ inf_file_util_delete(const gchar* path,
     return inf_file_util_delete_file(path, error);
 }
 
+/**
+ * inf_file_util_write_private_data:
+ * @filename: Filename of the file to be written to.
+ * @data: Data that should be written to file.
+ * @length: Length of data in bytes.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Writes @data to the file pointed to by @filename. On Unix-like systems,
+ * @filename is created with 0600 permission. If the function fails, %FALSE is
+ * returned and @error is set.
+ *
+ * Returns: %TRUE on success or %FALSE on error.
+ */
+gboolean
+inf_file_util_write_private_data(const gchar* filename,
+                                 const void* data,
+                                 size_t length,
+                                 GError** error)
+{
+#ifdef G_OS_WIN32
+  return g_file_set_contents(
+    filename,
+    data,
+    length,
+    error
+  );
+#else
+  gchar *temp_file = g_strconcat(filename, ".XXXXXX", NULL);
+  gint fd = g_mkstemp_full(
+    temp_file,
+    O_WRONLY|O_CREAT|O_TRUNC,
+    0600
+  );
+  if (fd == -1)
+  {
+    inf_file_util_set_error_from_errno(error, errno);
+    g_free(temp_file);
+    return FALSE;
+  }
+  size_t remaining = length;
+  while (remaining > 0)
+  {
+    ssize_t written = write(fd, data, remaining);
+    if (written == -1)
+    {
+      inf_file_util_set_error_from_errno(error, errno);
+      g_close(fd, NULL);
+      g_unlink(temp_file);
+      g_free(temp_file);
+      return FALSE;
+    }
+    remaining -= written;
+    data = ((gchar*)data) + written;
+  }
+  if (g_close(fd, error) == FALSE)
+  {
+    g_unlink(temp_file);
+    g_free(temp_file);
+    return FALSE;
+  }
+  if (g_rename(temp_file, filename) == -1)
+  {
+    inf_file_util_set_error_from_errno(error, errno);
+    g_unlink(temp_file);
+    g_free(temp_file);
+    return FALSE;
+  }
+  g_free(temp_file);
+  return TRUE;
+#endif
+}
+
 /* vim:set et sw=2 ts=2: */

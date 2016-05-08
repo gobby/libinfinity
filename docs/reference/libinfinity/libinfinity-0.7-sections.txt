@@ -1420,6 +1420,7 @@ inf_file_util_delete_file
 inf_file_util_delete_single_directory
 inf_file_util_delete_directory
 inf_file_util_delete
+inf_file_util_write_private_data
 </SECTION>
 
 <SECTION>
