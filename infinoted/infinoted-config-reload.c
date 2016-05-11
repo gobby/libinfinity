@@ -67,7 +67,8 @@ infinoted_config_reload(InfinotedRun* run,
   InfdTcpServer* tcp4;
 
   guint port;
-  InfIpAddress* addr;
+  InfIpAddress* addr4;
+  InfIpAddress* addr6;
   GError* local_error;
 
   InfdStorage* storage;
@@ -105,6 +106,26 @@ infinoted_config_reload(InfinotedRun* run,
     }
   }
 
+  if((startup->options->listen_address != NULL &&
+      run->startup->options->listen_address == NULL) ||
+     (startup->options->listen_address == NULL &&
+      run->startup->options->listen_address != NULL) ||
+     (startup->options->listen_address != NULL &&
+      run->startup->options->listen_address != NULL &&
+      inf_ip_address_collate(startup->options->listen_address,
+                             run->startup->options->listen_address) != 0))
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("INFINOTED_CONFIG_RELOAD_ERROR"),
+      0,
+      _("Changing the listen address at runtime is not supported")
+    );
+
+    infinoted_startup_free(startup);
+    return FALSE;
+  }
+
   /* Find out the port we are currently running on */
   tcp4 = tcp6 = NULL;
   if(run->xmpp6)
@@ -125,15 +146,27 @@ infinoted_config_reload(InfinotedRun* run,
   {
     /* TODO: This is the same logic as in infinoted_run_new()... should
      * probably go into an extra function. */
-    addr = inf_ip_address_new_raw6(INFINOTED_CONFIG_RELOAD_IPV6_ANY_ADDR);
+    if(startup->options->listen_address == NULL)
+    {
+      addr4 = NULL;
+      addr6 = inf_ip_address_new_raw6(INFINOTED_CONFIG_RELOAD_IPV6_ANY_ADDR);
+    }
+    else
+    {
+      addr4 = startup->options->listen_address;
+      addr6 = startup->options->listen_address;
+    }
+
     tcp6 = g_object_new(
       INFD_TYPE_TCP_SERVER,
       "io", run->io,
-      "local-address", addr,
+      "local-address", addr6,
       "local-port", startup->options->port,
       NULL
     );
-    inf_ip_address_free(addr);
+
+    if(startup->options->listen_address == NULL)
+      inf_ip_address_free(addr6);
 
     if(!infd_tcp_server_bind(tcp6, NULL))
     {
@@ -144,7 +177,7 @@ infinoted_config_reload(InfinotedRun* run,
     tcp4 = g_object_new(
       INFD_TYPE_TCP_SERVER,
       "io", run->io,
-      "local-address", NULL,
+      "local-address", addr4,
       "local-port", startup->options->port,
       NULL
     );
