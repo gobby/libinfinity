@@ -1013,7 +1013,8 @@ infinoted_options_free(InfinotedOptions* options)
   g_free(options->certificate_file);
   g_free(options->certificate_chain_file);
   g_free(options->root_directory);
-  inf_ip_address_free(options->listen_address);
+  if(options->listen_address != NULL)
+    inf_ip_address_free(options->listen_address);
   g_strfreev(options->plugins);
   g_free(options->password);
 #ifdef LIBINFINITY_HAVE_PAM
