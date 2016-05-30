@@ -119,6 +119,7 @@ infinoted_plugin_dbus_invocation_unref(gpointer data)
   }
 }
 
+static void
 infinoted_plugin_dbus_invocation_free(InfinotedPluginDbus* plugin,
                                       InfinotedPluginDbusInvocation* inv)
 {
