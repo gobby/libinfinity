@@ -34,6 +34,7 @@
 
 #include <libinfinity/common/inf-cert-util.h>
 
+#include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <gnutls/x509.h>
@@ -225,6 +226,172 @@ inf_gtk_connection_view_chain_data_func(GtkTreeViewColumn* column,
 
   g_object_set_property(G_OBJECT(renderer), "text", &value);
   g_value_unset(&value);
+}
+
+static void
+inf_gtk_connection_view_update_connection_info(InfGtkConnectionView* view,
+                                               InfXmppConnection* connection)
+{
+  InfGtkConnectionViewPrivate* priv;
+  InfTcpConnection* tcp;
+
+  InfIpAddress* remote_address;
+  guint remote_port;
+  InfIpAddress* local_address;
+  guint local_port;
+  gchar* text;
+
+  const gchar* cs;
+  gnutls_kx_algorithm_t kx;
+  gnutls_cipher_algorithm_t cipher;
+  gnutls_mac_algorithm_t mac;
+  gnutls_protocol_t ver;
+  guint dh_prime_bits;
+
+  priv = INF_GTK_CONNECTION_VIEW_PRIVATE(view);
+
+  if(connection == NULL)
+  {
+    gtk_label_set_text(GTK_LABEL(priv->remote_hostname), NULL);
+    gtk_label_set_text(GTK_LABEL(priv->remote_ipaddress), NULL);
+    gtk_label_set_text(GTK_LABEL(priv->local_ipaddress), NULL);
+
+    gtk_label_set_text(GTK_LABEL(priv->tls_version), NULL);
+    gtk_label_set_text(GTK_LABEL(priv->cipher_suite), NULL);
+    gtk_label_set_text(GTK_LABEL(priv->dh_prime_bits), NULL);
+
+    inf_gtk_connection_view_set_chain(view, NULL);
+  }
+  else
+  {
+    g_object_get(G_OBJECT(connection), "remote-hostname", &text, NULL);
+
+    if(text != NULL)
+    {
+      gtk_label_set_text(GTK_LABEL(priv->remote_hostname), text);
+    }
+    else
+    {
+      text = g_markup_printf_escaped("<i>%s</i>", _("Unknown"));
+      gtk_label_set_markup(GTK_LABEL(priv->remote_hostname), text);
+    }
+
+    g_free(text);
+
+    g_object_get(G_OBJECT(connection), "tcp-connection", &tcp, NULL);
+    g_object_get(
+      G_OBJECT(tcp),
+      "remote-address", &remote_address,
+      "remote-port", &remote_port,
+      "local-address", &local_address,
+      "local-port", &local_port,
+      NULL
+    );
+
+    g_object_unref(tcp);
+
+    text = inf_gtk_connection_view_format_ipaddress(
+      remote_address,
+      remote_port
+    );
+
+    gtk_label_set_text(GTK_LABEL(priv->remote_ipaddress), text);
+    g_free(text);
+
+    text = inf_gtk_connection_view_format_ipaddress(
+      local_address,
+      local_port
+    );
+
+    gtk_label_set_text(GTK_LABEL(priv->local_ipaddress), text);
+    g_free(text);
+
+    inf_ip_address_free(remote_address);
+    inf_ip_address_free(local_address);
+
+    if(inf_xmpp_connection_get_tls_enabled(connection))
+    {
+      kx = inf_xmpp_connection_get_kx_algorithm(connection);
+      cipher = inf_xmpp_connection_get_cipher_algorithm(connection);
+      mac = inf_xmpp_connection_get_mac_algorithm(connection);
+      ver = inf_xmpp_connection_get_tls_protocol(connection);
+      dh_prime_bits = inf_xmpp_connection_get_dh_prime_bits(connection);
+
+      gtk_label_set_text(
+        GTK_LABEL(priv->tls_version),
+        gnutls_protocol_get_name(ver)
+      );
+
+      cs = gnutls_cipher_suite_get_name(kx, cipher, mac);
+      if(ver == GNUTLS_SSL3)
+        text = g_strdup_printf("SSL_%s", cs);
+      else
+        text = g_strdup_printf("TLS_%s", cs);
+      gtk_label_set_text(GTK_LABEL(priv->cipher_suite), text);
+      g_free(text);
+
+      if(dh_prime_bits > 0)
+      {
+        text = g_markup_printf_escaped("%u bit", dh_prime_bits);
+        gtk_label_set_text(GTK_LABEL(priv->dh_prime_bits), text);
+      }
+      else
+      {
+        text = g_markup_printf_escaped("<i>%s</i>", _("N/A"));
+        gtk_label_set_markup(GTK_LABEL(priv->dh_prime_bits), text);
+      }
+
+      g_free(text);
+
+      inf_gtk_connection_view_set_chain(
+        view,
+        inf_xmpp_connection_get_peer_certificate(connection)
+      );
+    }
+    else
+    {
+      text = g_markup_printf_escaped("<i>%s</i>", _("No Encryption"));
+      gtk_label_set_markup(GTK_LABEL(priv->tls_version), text);
+      g_free(text);
+
+      text = g_markup_printf_escaped("<i>%s</i>", _("N/A"));
+      gtk_label_set_markup(GTK_LABEL(priv->cipher_suite), text);
+      gtk_label_set_markup(GTK_LABEL(priv->dh_prime_bits), text);
+      g_free(text);
+
+      inf_gtk_connection_view_set_chain(view, NULL);
+    }
+  }
+}
+
+static void
+inf_gtk_connection_view_notify_tls_enabled_cb(GObject* object,
+                                              GParamSpec* pspec,
+                                              gpointer user_data)
+{
+  InfGtkConnectionView* view;
+  InfGtkConnectionViewPrivate* priv;
+
+  view = INF_GTK_CONNECTION_VIEW(user_data);
+  priv = INF_GTK_CONNECTION_VIEW_PRIVATE(view);
+
+  g_assert(priv->connection != NULL);
+  inf_gtk_connection_view_update_connection_info(view, priv->connection);
+}
+
+static void
+inf_gtk_connection_view_notify_credentials_cb(GObject* object,
+                                              GParamSpec* pspec,
+                                              gpointer user_data)
+{
+  InfGtkConnectionView* view;
+  InfGtkConnectionViewPrivate* priv;
+
+  view = INF_GTK_CONNECTION_VIEW(user_data);
+  priv = INF_GTK_CONNECTION_VIEW_PRIVATE(view);
+
+  g_assert(priv->connection != NULL);
+  inf_gtk_connection_view_update_connection_info(view, priv->connection);
 }
 
 static void
@@ -477,20 +644,6 @@ inf_gtk_connection_view_set_connection(InfGtkConnectionView* view,
                                        InfXmppConnection* connection)
 {
   InfGtkConnectionViewPrivate* priv;
-  InfTcpConnection* tcp;
-
-  InfIpAddress* remote_address;
-  guint remote_port;
-  InfIpAddress* local_address;
-  guint local_port;
-  gchar* text;
-
-  const gchar* cs;
-  gnutls_kx_algorithm_t kx;
-  gnutls_cipher_algorithm_t cipher;
-  gnutls_mac_algorithm_t mac;
-  gnutls_protocol_t ver;
-  guint dh_prime_bits;
 
   g_return_if_fail(INF_GTK_IS_CONNECTION_VIEW(view));
   g_return_if_fail(connection == NULL || INF_IS_XMPP_CONNECTION(connection));
@@ -498,125 +651,44 @@ inf_gtk_connection_view_set_connection(InfGtkConnectionView* view,
   priv = INF_GTK_CONNECTION_VIEW_PRIVATE(view);
   
   if(priv->connection != NULL)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->connection),
+      G_CALLBACK(inf_gtk_connection_view_notify_tls_enabled_cb),
+      view
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->connection),
+      G_CALLBACK(inf_gtk_connection_view_notify_credentials_cb),
+      view
+    );
+
     g_object_unref(priv->connection);
+  }
 
   priv->connection = connection;
 
   if(connection != NULL)
+  {
     g_object_ref(connection);
 
-  if(connection == NULL)
-  {
-    gtk_label_set_text(GTK_LABEL(priv->remote_hostname), NULL);
-    gtk_label_set_text(GTK_LABEL(priv->remote_ipaddress), NULL);
-    gtk_label_set_text(GTK_LABEL(priv->local_ipaddress), NULL);
+    g_signal_connect(
+      G_OBJECT(connection),
+      "notify::tls-enabled",
+      G_CALLBACK(inf_gtk_connection_view_notify_tls_enabled_cb),
+      view
+    );
 
-    gtk_label_set_text(GTK_LABEL(priv->tls_version), NULL);
-    gtk_label_set_text(GTK_LABEL(priv->cipher_suite), NULL);
-    gtk_label_set_text(GTK_LABEL(priv->dh_prime_bits), NULL);
-
-    inf_gtk_connection_view_set_chain(view, NULL);
+    g_signal_connect(
+      G_OBJECT(connection),
+      "notify::credentials",
+      G_CALLBACK(inf_gtk_connection_view_notify_credentials_cb),
+      view
+    );
   }
-  else
-  {
-    g_object_get(G_OBJECT(connection), "remote-hostname", &text, NULL);
 
-    if(text != NULL)
-    {
-      gtk_label_set_text(GTK_LABEL(priv->remote_hostname), text);
-    }
-    else
-    {
-      text = g_markup_printf_escaped("<i>%s</i>", _("Unknown"));
-      gtk_label_set_markup(GTK_LABEL(priv->remote_hostname), text);
-    }
-
-    g_free(text);
-    
-    g_object_get(G_OBJECT(connection), "tcp-connection", &tcp, NULL);
-    g_object_get(
-      G_OBJECT(tcp),
-      "remote-address", &remote_address,
-      "remote-port", &remote_port,
-      "local-address", &local_address,
-      "local-port", &local_port,
-      NULL
-    );
-
-    g_object_unref(tcp);
-
-    text = inf_gtk_connection_view_format_ipaddress(
-      remote_address,
-      remote_port
-    );
-    
-    gtk_label_set_text(GTK_LABEL(priv->remote_ipaddress), text);
-    g_free(text);
-
-    text = inf_gtk_connection_view_format_ipaddress(
-      local_address,
-      local_port
-    );
-
-    gtk_label_set_text(GTK_LABEL(priv->local_ipaddress), text);
-    g_free(text);
-
-    inf_ip_address_free(remote_address);
-    inf_ip_address_free(local_address);
-
-    if(inf_xmpp_connection_get_tls_enabled(connection))
-    {
-      kx = inf_xmpp_connection_get_kx_algorithm(connection);
-      cipher = inf_xmpp_connection_get_cipher_algorithm(connection);
-      mac = inf_xmpp_connection_get_mac_algorithm(connection);
-      ver = inf_xmpp_connection_get_tls_protocol(connection);
-      dh_prime_bits = inf_xmpp_connection_get_dh_prime_bits(connection);
-
-      gtk_label_set_text(
-        GTK_LABEL(priv->tls_version),
-        gnutls_protocol_get_name(ver)
-      );
-
-      cs = gnutls_cipher_suite_get_name(kx, cipher, mac);
-      if(ver == GNUTLS_SSL3)
-        text = g_strdup_printf("SSL_%s", cs);
-      else
-        text = g_strdup_printf("TLS_%s", cs);
-      gtk_label_set_text(GTK_LABEL(priv->cipher_suite), text);
-      g_free(text);
-
-      if(dh_prime_bits > 0)
-      {
-        text = g_markup_printf_escaped("%u bit", dh_prime_bits);
-        gtk_label_set_text(GTK_LABEL(priv->dh_prime_bits), text);
-      }
-      else
-      {
-        text = g_markup_printf_escaped("<i>%s</i>", _("N/A"));
-        gtk_label_set_markup(GTK_LABEL(priv->dh_prime_bits), text);
-      }
-
-      g_free(text);
-
-      inf_gtk_connection_view_set_chain(
-        view,
-        inf_xmpp_connection_get_peer_certificate(connection)
-      );
-    }
-    else
-    {
-      text = g_markup_printf_escaped("<i>%s</i>", _("No Encryption"));
-      gtk_label_set_markup(GTK_LABEL(priv->tls_version), text);
-      g_free(text);
-
-      text = g_markup_printf_escaped("<i>%s</i>", _("N/A"));
-      gtk_label_set_markup(GTK_LABEL(priv->cipher_suite), text);
-      gtk_label_set_markup(GTK_LABEL(priv->dh_prime_bits), text);
-      g_free(text);
-
-      inf_gtk_connection_view_set_chain(view, NULL);
-    }
-  }
+  inf_gtk_connection_view_update_connection_info(view, connection);
 
   g_object_notify(G_OBJECT(view), "connection");
 }
