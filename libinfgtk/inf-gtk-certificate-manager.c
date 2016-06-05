@@ -137,13 +137,9 @@ inf_gtk_certificate_manager_dispose(GObject* object)
     priv->parent_window = NULL;
   }
 
-  while(priv->dialogs != NULL)
-  {
-    inf_gtk_certificate_manager_dialog_free(priv->dialogs->data);
-    priv->dialogs = g_slist_remove(priv->dialogs, priv->dialogs->data);
-  }
-
   G_OBJECT_CLASS(inf_gtk_certificate_manager_parent_class)->dispose(object);
+
+  g_assert(priv->dialogs == NULL);
 }
 
 static void
