@@ -1,3 +1,65 @@
+libinfinity 0.7.0:
+
+	* infinoted: Allow to listen on a specific interface instead of all
+	  interfaces (Lukas Kupczyk).
+	* infinoted: Add a dbus plugin which allows some interaction with
+	  reading and modifying the directory tree.
+	* Removed support for GTK+ 2.x. libinfinity-0.7 can only be built
+	  against GTK+ 3.x.
+	* Generate gobject-introspection repositories, allowing libinfinity
+	  to be used from higher-level programming languages such as Python.
+	* Enable TCP keepalives on all connections to prevent inactive
+	  connections from being dropped by a firewall, and to allow quicker
+	  detection of an actual disconnect.
+
+libinfinity 0.6.7:
+	* Fix a possible crash when an entry is removed from the document
+	  browser.
+	* Fix a possible crash in infinoted when access control lists are
+	  enabled.
+	* Fix an assertion failure when operating with text documents and
+	  using glib 2.46 or newer.
+
+libinfinity 0.6.6:
+	* Fix certificates being only verified for expiration and other
+	  criteria such as weak algorithms if the CA is not trusted.
+	  (gobby #61)
+	* Fix some assertion failures and inconsistencies in
+	  InfTextFixlineBuffer.
+	* Fix a client-side crash when the server shuts down ordinarily
+	  while still connected.
+
+libinfinity 0.6.5:
+	* Fix memory corruption in InfTextFixlineBuffer.
+	* infinoted: Fix error message in server log when a client certificate
+	  is not trusted.
+	* Fix various crashes related to sending data to already closed
+	  connections.
+	* Build fix when res_query is provided by libc, not libresolv, such
+	  as on FreeBSD (gobby #23, Samantha Michelle Smith).
+
+libinfinity 0.6.4:
+	* Build fixes for Mac OS X (#7, Dominyk Tiller).
+
+libinfinity 0.6.3:
+	* infinoted: Fix a possible timing attack on the server password
+	  (Jann Horn).
+	* infinoted: Use mode 0777 instead of 0700 when creating directories
+	  in the directory-sync plugin.
+	* Write certificates not seen before into the known hosts file.
+
+libinfinity 0.6.2:
+	* Fix accounts being deleted when a plugin overrides the default
+	  account storage.
+	* The infinoted manual page has been corrected for the syntax of the
+	  --plugins option.
+	* A crash has been fixed when a connection is closed for which the
+	  the certificate dialog was shown.
+
+libinfinity 0.6.1:
+	* Explicitly link against libresolv on unix-based systems, to avoid
+	  a possible build failure.
+
 libinfinity 0.6.0:
 
 	* infinoted: Introduced a plugin infrastructure, and ported some of
