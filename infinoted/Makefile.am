@@ -89,14 +89,15 @@ if HAVE_INTROSPECTION
 INTROSPECTION_GIRS = Infinoted-0.7.gir
 INTROSPECTION_SCANNER_ENV = CC="${CC}"
 INTROSPECTION_COMPILER_ARGS = \
+	--includedir=${top_srcdir}/libinfinity \
 	--includedir=${top_builddir}/libinfinity \
-	--includedir=${top_builddir}/libinftext \
-	--includedir=${top_builddir}/libinfgtk
+	--includedir=${top_builddir}/libinftext
 
 Infinoted-0.7.gir: libinfinoted-plugin-manager-0.7.la
 
 Infinoted_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
+	--add-include-path=$(top_srcdir)/libinfinity \
 	--add-include-path=$(top_builddir)/libinfinity \
 	-n Infinoted \
 	--identifier-prefix=Infinoted \

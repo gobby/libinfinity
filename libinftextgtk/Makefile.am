@@ -43,6 +43,7 @@ if HAVE_INTROSPECTION
 INTROSPECTION_GIRS = InfTextGtk-0.7.gir
 INTROSPECTION_SCANNER_ENV = CC="${CC}"
 INTROSPECTION_COMPILER_ARGS = \
+	--includedir=${top_srcdir}/libinfinity \
 	--includedir=${top_builddir}/libinfinity \
 	--includedir=${top_builddir}/libinftext \
 	--includedir=${top_builddir}/libinfgtk
@@ -51,6 +52,7 @@ InfTextGtk-0.7.gir: libinftextgtk-0.7.la
 
 InfTextGtk_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
+	--add-include-path=$(top_srcdir)/libinfinity \
 	--add-include-path=$(top_builddir)/libinfinity \
 	--add-include-path=$(top_builddir)/libinftext \
 	--add-include-path=$(top_builddir)/libinfgtk \

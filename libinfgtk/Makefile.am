@@ -59,12 +59,12 @@ resources = \
 	resources/ui/infgtkpermissionsdialog.ui
 
 inf-gtk-resources.h: resources/infgtk.gresources.xml
-	glib-compile-resources $< \
+	$(AM_V_GEN) glib-compile-resources $< \
 		--target=$@ --sourcedir=$(srcdir)/resources \
 		--c-name _inf_gtk --generate-header --internal
 
 inf-gtk-resources.c: resources/infgtk.gresources.xml $(resources)
-	glib-compile-resources $< \
+	$(AM_V_GEN) glib-compile-resources $< \
 		--target=$@ --sourcedir=$(srcdir)/resources \
 		--c-name _inf_gtk --generate-source --internal
 
@@ -79,17 +79,23 @@ libinfgtk_0_7_la_SOURCES = $(sources)
 libinfgtk_0_7_ladir = \
 	$(includedir)/libinfgtk-$(LIBINFINITY_API_VERSION)/libinfgtk
 
+EXTRA_DIST = \
+	resources/infgtk.gresources.xml \
+	$(resources)
+
 if HAVE_INTROSPECTION
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS = InfGtk-0.7.gir
 INTROSPECTION_SCANNER_ENV = CC="${CC}"
 INTROSPECTION_COMPILER_ARGS = \
+	--includedir=${top_srcdir}/libinfinity \
 	--includedir=${top_builddir}/libinfinity
 
 InfGtk-0.7.gir: libinfgtk-0.7.la
 
 InfGtk_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
+	--add-include-path=$(top_srcdir)/libinfinity \
 	--add-include-path=$(top_builddir)/libinfinity \
 	-n InfGtk \
 	--identifier-prefix=InfGtk

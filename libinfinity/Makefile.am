@@ -218,10 +218,12 @@ if HAVE_INTROSPECTION
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS = Infinity-0.7.gir Infinityc-0.7.gir Infinityd-0.7.gir
 INTROSPECTION_SCANNER_ENV = CC="${CC}"
+INTROSPECTION_COMPILER_ARGS = \
+	--includedir=${top_srcdir}/libinfinity
 
 Infinity-0.7.gir: libinfinity-0.7.la
-Infinityc-0.7.gir: libinfinity-0.7.la Infinity-0.7.gir
-Infinityd-0.7.gir: libinfinity-0.7.la Infinity-0.7.gir
+Infinityc-0.7.gir: libinfinity-0.7.la Infinity-0.7.typelib
+Infinityd-0.7.gir: libinfinity-0.7.la Infinity-0.7.typelib
 
 Infinity_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
@@ -252,6 +254,7 @@ Infinity_0_7_gir_EXPORT_PACKAGES = libinfinity-0.7
 Infinityc_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
 	--add-include-path=${top_srcdir}/libinfinity \
+	--add-include-path=${top_builddir}/libinfinity \
 	-n Infinityc \
 	--identifier-prefix=Infc
 
@@ -270,6 +273,7 @@ Infinityc_0_7_gir_EXPORT_PACKAGES = libinfinity-0.7
 Infinityd_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
 	--add-include-path=${top_srcdir}/libinfinity \
+	--add-include-path=${top_builddir}/libinfinity \
 	-n Infinityd \
 	--identifier-prefix=Infd
 
@@ -294,4 +298,8 @@ typelib_DATA = InfGnutls-3.0.typelib InfGsasl-1.0.typelib Infinity-0.7.typelib I
 CLEANFILES = \
 	$(INTROSPECTION_GIRS) \
 	$(typelib_DATA)
+
+EXTRA_DIST = \
+	InfGnutls-3.0.gir \
+	InfGsasl-1.0.gir
 endif

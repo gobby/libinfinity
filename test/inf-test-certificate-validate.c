@@ -33,6 +33,9 @@
 
 #include <glib/gstdio.h>
 
+#include <string.h>
+#include <errno.h>
+
 typedef enum _InfTestCertificateValidateExpectation {
   INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT,
   INF_TEST_CERTIFICATE_VALIDATE_EXPECT_REJECT,
@@ -768,7 +771,12 @@ main(int argc,
   }
 
   /* So that the certificate files are found */
-  chdir("certs");
+  printf("%s\n", CERTS_DIR);
+  if(chdir(CERTS_DIR) != 0)
+  {
+    fprintf(stderr, "%s\n", strerror(errno));
+    return EXIT_FAILURE;
+  }
 
   res = EXIT_SUCCESS;
   for(test = TESTS; test->name != NULL; ++test)

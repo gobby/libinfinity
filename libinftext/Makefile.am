@@ -56,12 +56,14 @@ if HAVE_INTROSPECTION
 INTROSPECTION_GIRS = InfText-0.7.gir
 INTROSPECTION_SCANNER_ENV = CC="${CC}"
 INTROSPECTION_COMPILER_ARGS = \
+	--includedir=${top_srcdir}/libinfinity \
 	--includedir=${top_builddir}/libinfinity
 
 InfText-0.7.gir: libinftext-0.7.la
 
 InfText_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
+	--add-include-path=$(top_srcdir)/libinfinity \
 	--add-include-path=$(top_builddir)/libinfinity \
 	-n InfText \
 	--identifier-prefix=InfText

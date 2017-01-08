@@ -204,6 +204,9 @@ inf_test_traffic_replay_LDADD = \
 inf_test_certificate_validate_SOURCES = \
 	inf-test-certificate-validate.c
 
+inf_test_certificate_validate_CFLAGS = \
+	-DCERTS_DIR="\"${abs_srcdir}/certs\""
+
 inf_test_certificate_validate_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	${infinity_LIBS}
