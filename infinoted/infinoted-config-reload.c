@@ -115,7 +115,7 @@ infinoted_config_reload(InfinotedRun* run,
       inf_ip_address_collate(startup->options->listen_address,
                              run->startup->options->listen_address) != 0))
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       g_quark_from_static_string("INFINOTED_CONFIG_RELOAD_ERROR"),
       0,

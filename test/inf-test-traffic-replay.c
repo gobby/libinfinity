@@ -146,7 +146,7 @@ inf_test_traffic_replay_get_next_line(InfTestTrafficReplayConnection* conn,
     {
       err = ferror(conn->file);
 
-      g_set_error(
+      g_set_error_literal(
         error,
         G_FILE_ERROR,
         g_file_error_from_errno(err),
