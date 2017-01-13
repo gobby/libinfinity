@@ -1,4 +1,4 @@
-m4_define([libinfinity_version], [0.7.0])
+m4_define([libinfinity_version], [0.7.1])
 m4_define([libinfinity_api_version], [0.7])
 m4_define([libinfinity_libtool_version], [0:0:0])
 
