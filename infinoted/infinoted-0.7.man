@@ -1,8 +1,8 @@
-.TH INFINOTED "1" "August 2014" "infinoted 0.6" "User Commands"
+.TH INFINOTED "1" "August 2014" "infinoted 0.7" "User Commands"
 .SH NAME
 infinoted \- dedicated server for the infinote protocol (e.g. Gobby)
 .SH SYNOPSIS
-.B infinoted\-0.6
+.B infinoted\-0.7
 .RI [ options ]
 .SH DESCRIPTION
 .B infinoted
@@ -15,6 +15,12 @@ Example clients include Gobby 0.5.x, Kobby and a special plugin for gedit.
 It is
 .B not
 compatible to the older libobby protocol.
+.PP
+It comes with a list of plugins like autosave, dbus integration and
+others. For a complete list see
+https://github.com/gobby/gobby/wiki/Dedicated%20Server.
+The default plugin is note-text.
+It needs to be added along with any other plugins that one might want to enable.
 .SH OPTIONS
 .SS "Help Options:"
 .TP
