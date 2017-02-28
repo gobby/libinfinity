@@ -1,3 +1,7 @@
+libinfinity 0.6.8:
+	* Fix a possible crash when uploading a document to the infinoted
+	  server. (gobby #142)
+
 libinfinity 0.6.7:
 	* Fix a possible crash when an entry is removed from the document
 	  browser.
