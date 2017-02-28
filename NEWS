@@ -1,3 +1,9 @@
+libinfinity 0.7.1:
+
+	* Fix a possible crash when uploading a document to the infinoted
+	  server. (gobby #142)
+	* Fix two instances of possible format string injection. (#17)
+
 libinfinity 0.7.0:
 
 	* infinoted: Allow to listen on a specific interface instead of all
