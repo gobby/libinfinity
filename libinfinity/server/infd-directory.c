@@ -3662,6 +3662,7 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
    * tree. */
   InfdDirectorySyncIn* sync_in;
   InfdDirectory* directory;
+  const InfdNotePlugin* plugin;
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   InfBrowserIter iter;
@@ -3674,6 +3675,7 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
 
   sync_in = (InfdDirectorySyncIn*)user_data;
   directory = sync_in->directory;
+  plugin = sync_in->plugin;
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   node = infd_directory_node_new_note(
@@ -3708,11 +3710,11 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
 
   if(priv->storage != NULL)
   {
-    ret = sync_in->plugin->session_write(
+    ret = plugin->session_write(
       priv->storage,
       session,
       path,
-      sync_in->plugin->user_data,
+      plugin->user_data,
       &error
     );
   }
