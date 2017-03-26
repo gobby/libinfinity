@@ -1282,7 +1282,7 @@ inf_adopted_session_process_xml_run(InfSession* session,
         inf_adopted_user_set_vector(INF_ADOPTED_USER(user), user_vector);
       }
 
-      /* If an error occured then break here, and do not process the
+      /* If an error occurred then break here, and do not process the
        * subsequent requests -- they will likely fail as well. */
       if(process_request == FALSE)
         break;

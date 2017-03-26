@@ -492,7 +492,7 @@ inf_cert_util_write_dh_params(gnutls_dh_params_t params,
  * error reporting.
  *
  * Returns: (transfer full): A new key to be freed with
- * gnutls_x509_privkey_deinit(), or %NULL if an error occured.
+ * gnutls_x509_privkey_deinit(), or %NULL if an error occurred.
  */
 gnutls_x509_privkey_t
 inf_cert_util_create_private_key(gnutls_pk_algorithm_t algo,

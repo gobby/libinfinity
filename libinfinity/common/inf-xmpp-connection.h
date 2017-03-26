@@ -240,7 +240,7 @@ typedef enum _InfXmppConnectionStreamError {
  * @INF_XMPP_CONNECTION_AUTH_ERROR_INVALID_MECHANISM: The initiating entity
  * did not provide a mechanism or requested a mechanism that is not supported
  * by the receiving entity.
- * @INF_XMPP_CONNECTION_AUTH_ERROR_MECHANISM_TOO_WEAK: The mechanism requsted
+ * @INF_XMPP_CONNECTION_AUTH_ERROR_MECHANISM_TOO_WEAK: The mechanism requested
  * by the initiating entity is weaker than server policy permits for that
  * initiating entity.
  * @INF_XMPP_CONNECTION_AUTH_ERROR_NOT_AUTHORIZED: The authentication failed

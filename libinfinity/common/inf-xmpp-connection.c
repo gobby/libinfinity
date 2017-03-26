@@ -533,7 +533,7 @@ inf_xmpp_connection_auth_strerror(InfXmppConnectionAuthError code)
     return _("The initiating entity did not provide a mechanism or requested "
              "a mechanism that is not supported by the receiving entity");
   case INF_XMPP_CONNECTION_AUTH_ERROR_MECHANISM_TOO_WEAK:
-    return _("The mechanism requsted by the initiating entity is weaker than "
+    return _("The mechanism requested by the initiating entity is weaker than "
              "server policy permits for that initiating entity");
   case INF_XMPP_CONNECTION_AUTH_ERROR_NOT_AUTHORIZED:
     return _("The authentication failed because the initiating entity did "
@@ -542,7 +542,7 @@ inf_xmpp_connection_auth_strerror(InfXmppConnectionAuthError code)
     return _("The authentication failed because of a temporary error condition "
              "within the receiving entity");
   case INF_XMPP_CONNECTION_AUTH_ERROR_FAILED:
-    return _("An unknown authentication error has occured");
+    return _("An unknown authentication error has occurred");
   default:
     g_assert_not_reached();
     return NULL;
@@ -727,7 +727,7 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
 
       if(cur_bytes < 0)
       {
-        /* A GnuTLS error occured. It does not make sense to try to send
+        /* A GnuTLS error occurred. It does not make sense to try to send
          * </stream:stream> or a gnutls bye here, since this would again
          * have to go through GnuTLS, which would fail again, and so on. */
         error = NULL;
@@ -940,7 +940,7 @@ inf_xmpp_connection_send_auth_error(InfXmppConnection* xmpp,
   xmlNodePtr child;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
-  /* SASL should be present, otherwise no auth error could have occured */
+  /* SASL should be present, otherwise no auth error could have occurred */
   g_assert(priv->sasl_context != NULL);
 
   xml = inf_xmpp_connection_node_new_sasl("failure");
@@ -1989,7 +1989,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
     /* Ensure that priv->sasl_context exists */
     if(inf_xmpp_connection_sasl_ensure(xmpp) == FALSE)
     {
-      /* Error occured during SASL initialization */
+      /* Error occurred during SASL initialization */
       xmlFreeNode(features);
       return;
     }
@@ -3236,7 +3236,7 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
           /* Just try again if we were interrupted */
           if(res != GNUTLS_E_INTERRUPTED && res != GNUTLS_E_AGAIN)
           {
-            /* A TLS error occured. */
+            /* A TLS error occurred. */
             error = NULL;
             inf_gnutls_set_error(&error, res);
             inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);

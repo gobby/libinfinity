@@ -79,7 +79,7 @@ typedef void(*InfSaslContextCallbackFunc)(InfSaslContextSession* session,
  * @data: The response to the fed data, base64 encoded and null-terminated.
  * @needs_more: If %TRUE then inf_sasl_context_session_feed() needs to be
  * called again with more data, otherwise the authentication has finished.
- * @error: This is nonzero if an error occured while processing the input
+ * @error: This is nonzero if an error occurred while processing the input
  * data.
  * @user_data: The user data specified in inf_sasl_context_session_feed().
  *

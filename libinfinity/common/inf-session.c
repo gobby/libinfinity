@@ -228,9 +228,9 @@ inf_session_sync_strerror(InfSessionSyncError errcode)
     return _("Expected end-of-sync message as last message during "
              "synchronization");
   case INF_SESSION_SYNC_ERROR_FAILED:
-    return _("An unknown synchronization error has occured");
+    return _("An unknown synchronization error has occurred");
   default:
-    return _("An error with unknown error code occured");
+    return _("An error with unknown error code occurred");
   }
 }
 
@@ -244,7 +244,7 @@ inf_session_get_sync_error_message(GQuark domain,
   /* TODO: Add a possibilty for sub classes to register their error domains
    * that can occur in process_xml_sync. Maybe via a translate_error_sync
    * vfunc. */
-  return _("An error with unknown error domain occured");
+  return _("An error with unknown error domain occurred");
 }
 
 static GSList*

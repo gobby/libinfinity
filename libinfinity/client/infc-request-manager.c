@@ -537,7 +537,7 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
   }
   else
   {
-    /* An error occured. We do not use GError here tough, because this is a
+    /* An error occurred. We do not use GError here tough, because this is a
      * most likely a bug in someone's code (if not, it is one in
      * libinfinity's code). */
     request = NULL;
@@ -687,7 +687,7 @@ infc_request_manager_get_request_by_seq(InfcRequestManager* manager,
  * name), the function returns %NULL and @error is set.
  *
  * Returns: (transfer none) (allow-none): The resulting request, or %NULL
- * if the "seq" attribute was not present or an error occured.
+ * if the "seq" attribute was not present or an error occurred.
  **/
 InfcRequest*
 infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
@@ -745,7 +745,7 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
         error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_INVALID_SEQ,
-        _("The request contains a sequence number refering to a request of "
+        _("The request contains a sequence number referring to a request of "
           "type '%s', but a request of type '%s' was expected"),
         request_type,
         name
@@ -773,7 +773,7 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
  * another name), the function returns %NULL and @error is set.
  *
  * Returns: (transfer none): The resulting request, or %NULL if an error
- * occured.
+ * occurred.
  **/
 InfcRequest*
 infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,

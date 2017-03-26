@@ -52,7 +52,7 @@ error_cb(InfTcpConnection* connection,
          GError* error,
          gpointer user_data)
 {
-  fprintf(stderr, "Connection Error occured: %s\n", error->message);
+  fprintf(stderr, "Connection Error occurred: %s\n", error->message);
   if(inf_standalone_io_loop_running(INF_STANDALONE_IO(user_data)))
     inf_standalone_io_loop_quit(INF_STANDALONE_IO(user_data));
 }

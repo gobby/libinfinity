@@ -436,8 +436,8 @@ inf_adopted_state_vector_compare(const InfAdoptedStateVector* first,
  * @first: A #InfAdoptedStateVector.
  * @second: Another #InfAdoptedStateVector.
  *
- * Checks whether an event that occured at time @second is causally
- * dependant on an event that occured at time @first, that is all
+ * Checks whether an event that occurred at time @second is causally
+ * dependant on an event that occurred at time @first, that is all
  * components of @first are less or equal to the corresponding component in
  * @second.
  *
@@ -741,7 +741,7 @@ inf_adopted_state_vector_from_string(const gchar* str,
         error,
         inf_adopted_state_vector_error_quark(),
         INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
-        _("ID '%u' already occured before"),
+        _("ID '%u' already occurred before"),
         id
       );
 

@@ -31,7 +31,7 @@ G_BEGIN_DECLS
  * InfRequestError:
  * @INF_REQUEST_ERROR_UNKNOWN_DOMAIN: The server sent &lt;request-failed/&gt;
  * with an unknown error domain.
- * @INF_REQUEST_ERROR_REPLY_UNPROCESSED: An error occured while processing the
+ * @INF_REQUEST_ERROR_REPLY_UNPROCESSED: An error occurred while processing the
  * server reply for a request.
  * @INF_REQUEST_ERROR_INVALID_SEQ: The server sent an invalid sequence number
  * in a reply to a request.
@@ -220,7 +220,7 @@ typedef enum _InfDirectoryError {
  * to connect to this server.
  * @INF_AUTHENTICATION_DETAIL_ERROR_TRY_AGAIN: Authentication was temporarily
  * interrupted on the server side.
- * @INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR: An error occured while
+ * @INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR: An error occurred while
  * checking user permissions.
  *
  * These errors can give an additional hint why the SASL

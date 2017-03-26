@@ -57,7 +57,7 @@ struct AvahiWatch {
   InfIoWatch* watch;
 
   InfNativeSocket socket;
-  AvahiWatchEvent occured_events;
+  AvahiWatchEvent occurred_events;
 
   AvahiWatchCallback callback;
   void* userdata;
@@ -880,7 +880,7 @@ inf_discovery_avahi_client_callback(AvahiClient* client,
     {
       g_warning(
         _("Avahi client is in failure state. Service discovery or "
-          "publishing is no longer possible.\n\nThe occured failure "
+          "publishing is no longer possible.\n\nThe occurred failure "
           "was: %s\n"),
         avahi_strerror(avahi_client_errno(client))
       );
@@ -932,8 +932,8 @@ inf_discovery_avahi_watch_cb(InfNativeSocket* socket,
   AvahiWatch* watch;
   watch = (AvahiWatch*)user_data;
 
-  watch->occured_events = inf_discovery_avahi_from_io_event(event);
-  watch->callback(watch, *socket, watch->occured_events, watch->userdata);
+  watch->occurred_events = inf_discovery_avahi_from_io_event(event);
+  watch->callback(watch, *socket, watch->occurred_events, watch->userdata);
 }
 
 static void
@@ -963,7 +963,7 @@ inf_discovery_avahi_watch_new(const AvahiPoll* api,
 
   watch->avahi = avahi;
   watch->socket = fd;
-  watch->occured_events = 0;
+  watch->occurred_events = 0;
   watch->callback = callback;
   watch->userdata = userdata;
 
@@ -996,7 +996,7 @@ inf_discovery_avahi_watch_update(AvahiWatch* watch,
 static AvahiWatchEvent
 inf_discovery_avahi_watch_get_events(AvahiWatch* watch)
 {
-  return watch->occured_events;
+  return watch->occurred_events;
 }
 
 static void

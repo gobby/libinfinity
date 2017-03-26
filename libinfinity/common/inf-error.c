@@ -79,9 +79,9 @@ inf_request_strerror(InfRequestError code)
   case INF_REQUEST_ERROR_NOT_AUTHORIZED:
     return _("Not authorized");
   case INF_REQUEST_ERROR_FAILED:
-    return _("An unknown request error occured");
+    return _("An unknown request error occurred");
   default:
-    return _("An error with unknown error code occured");
+    return _("An error with unknown error code occurred");
   }
 }
 
@@ -126,9 +126,9 @@ inf_user_strerror(InfUserError code)
   case INF_USER_ERROR_INVALID_STATUS:
     return _("'status' attribute has invalid value");
   case INF_USER_ERROR_FAILED:
-    return _("An unknown user error occured");
+    return _("An unknown user error occurred");
   default:
-    return _("An error with unknown error code occured");
+    return _("An error with unknown error code occurred");
   }
 }
 
@@ -229,9 +229,9 @@ inf_directory_strerror(InfDirectoryError code)
   case INF_DIRECTORY_ERROR_ACL_NOT_QUERIED:
     return _("The ACL has not been queried");
   case INF_DIRECTORY_ERROR_FAILED:
-    return _("An unknown directory error has occured");
+    return _("An unknown directory error has occurred");
   default:
-    return _("An error with unknown code has occured");
+    return _("An error with unknown code has occurred");
   }
 }
 
@@ -274,7 +274,7 @@ inf_authentication_detail_strerror(InfAuthenticationDetailError code)
   case INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR:
     return _("An error cocured while checking user permissions.");
   default:
-    return _("An error with unknown code has occured");
+    return _("An error with unknown code has occurred");
   }
 }
 

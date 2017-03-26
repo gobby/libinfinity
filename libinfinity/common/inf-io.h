@@ -74,7 +74,7 @@ typedef struct _InfIoDispatch InfIoDispatch;
  * @INF_IO_INCOMING: Data can be read from the socket without blocking, or
  * the connection has been closed (which is the case when recv() returns 0).
  * @INF_IO_OUTGOING: Data can be sent without blocking.
- * @INF_IO_ERROR: An error with the socket occured, or the connection has
+ * @INF_IO_ERROR: An error with the socket occurred, or the connection has
  * been closed. Use getsockopt() to read the %SO_ERROR option to find out what
  * the problem is.
  *
@@ -88,8 +88,8 @@ typedef enum _InfIoEvent {
 
 /**
  * InfIoWatchFunc:
- * @socket: (array fixed-size=1): The socket on which an event occured.
- * @event: A bitmask of the events that occured.
+ * @socket: (array fixed-size=1): The socket on which an event occurred.
+ * @event: A bitmask of the events that occurred.
  * @user_data: User-defined data specified in inf_io_add_watch().
  *
  * Callback function that is called when an event occurs on a watched socket.

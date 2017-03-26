@@ -63,7 +63,7 @@ conn_error_cb(InfXmlConnection* connection,
               GError* error,
               gpointer user_data)
 {
-  fprintf(stderr, "Connection error occured: %s\n", error->message);
+  fprintf(stderr, "Connection error occurred: %s\n", error->message);
 }
 
 static void
@@ -95,7 +95,7 @@ error_cb(InfdXmppServer* server,
          GError* error,
          gpointer user_data)
 {
-  fprintf(stderr, "Server Error occured: %s\n", error->message);
+  fprintf(stderr, "Server Error occurred: %s\n", error->message);
 }
 
 static void

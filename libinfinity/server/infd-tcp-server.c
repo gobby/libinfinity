@@ -547,7 +547,7 @@ infd_tcp_server_class_init(InfdTcpServerClass* tcp_server_class)
  * @server must be in %INFD_TCP_SERVER_CLOSED state for this function to be
  * called.
  *
- * Returns: %TRUE on success, or %FALSE if an error occured.
+ * Returns: %TRUE on success, or %FALSE if an error occurred.
  */
 gboolean
 infd_tcp_server_bind(InfdTcpServer* server,
@@ -702,7 +702,7 @@ infd_tcp_server_bind(InfdTcpServer* server,
  * %INFD_TCP_SERVER_CLOSED, then infd_tcp_server_bind() is called before
  * actually opening the server.
  *
- * Returns: %TRUE on success, or %FALSE if an error occured.
+ * Returns: %TRUE on success, or %FALSE if an error occurred.
  **/
 gboolean
 infd_tcp_server_open(InfdTcpServer* server,

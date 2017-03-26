@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: http://bugzilla.gnome.org/enter_bug.cgi?"
 "product=glib&keywords=I18N+L10N&component=general\n"
-"POT-Creation-Date: 2017-01-08 15:20-0800\n"
+"POT-Creation-Date: 2017-03-26 15:58+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,7 +19,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #: ../infinoted/infinoted-config-reload.c:122
-#, c-format
 msgid "Changing the listen address at runtime is not supported"
 msgstr ""
 
@@ -120,7 +119,7 @@ msgstr ""
 
 #: ../infinoted/infinoted-options.c:127
 msgid ""
-"The directory which infinoted uses to permanantly store all documents on the "
+"The directory which infinoted uses to permanently store all documents on the "
 "server, and where they are read from after a server restart. [Default=~/."
 "infinote]"
 msgstr ""
@@ -213,7 +212,7 @@ msgstr ""
 #: ../infinoted/infinoted-options.c:285
 msgid ""
 "No certificate file given. If you don't have a suitable certificate file, "
-"either create one using the --create-certificate command line agument, or "
+"either create one using the --create-certificate command line argument, or "
 "disable TLS via by setting the security policy to \"no-tls\"."
 msgstr ""
 
@@ -1296,7 +1295,7 @@ msgstr ""
 
 #: ../libinfinity/adopted/inf-adopted-state-vector.c:744
 #, c-format
-msgid "ID '%u' already occured before"
+msgid "ID '%u' already occurred before"
 msgstr ""
 
 #: ../libinfinity/adopted/inf-adopted-state-vector.c:761
@@ -1347,7 +1346,7 @@ msgstr ""
 #: ../libinfinity/client/infc-browser.c:2580
 #, c-format
 msgid ""
-"The request contains a sequence number refering to a request of type '%s', "
+"The request contains a sequence number referring to a request of type '%s', "
 "but a request of either 'explore-node' or 'add-node' was expected."
 msgstr ""
 
@@ -1459,7 +1458,7 @@ msgstr ""
 #: ../libinfinity/client/infc-browser.c:4796
 #, c-format
 msgid ""
-"The request contains a sequence number refering to a request of type '%s', "
+"The request contains a sequence number referring to a request of type '%s', "
 "but a request of either 'query-acl' or 'set-acl' was expected."
 msgstr ""
 
@@ -1503,7 +1502,7 @@ msgstr ""
 #: ../libinfinity/client/infc-request-manager.c:748
 #, c-format
 msgid ""
-"The request contains a sequence number refering to a request of type '%s', "
+"The request contains a sequence number referring to a request of type '%s', "
 "but a request of type '%s' was expected"
 msgstr ""
 
@@ -1551,13 +1550,13 @@ msgid "A user with the requested ID does not exist"
 msgstr ""
 
 #: ../libinfinity/common/inf-chat-session.c:94
-msgid "An unknown chat session error has occured"
+msgid "An unknown chat session error has occurred"
 msgstr ""
 
 #: ../libinfinity/common/inf-chat-session.c:96
 #: ../libinfinity/common/inf-error.c:84 ../libinfinity/common/inf-error.c:131
 #: ../libinfinity/common/inf-session.c:233
-msgid "An error with unknown error code occured"
+msgid "An error with unknown error code occurred"
 msgstr ""
 
 #: ../libinfinity/common/inf-chat-session.c:360
@@ -1618,7 +1617,7 @@ msgid ""
 "Avahi client is in failure state. Service discovery or publishing is no "
 "longer possible.\n"
 "\n"
-"The occured failure was: %s\n"
+"The occurred failure was: %s\n"
 msgstr ""
 
 #. Translators: This is "<Service Name> (via <Network Interface> on
@@ -1662,7 +1661,7 @@ msgid "Not authorized"
 msgstr ""
 
 #: ../libinfinity/common/inf-error.c:82
-msgid "An unknown request error occured"
+msgid "An unknown request error occurred"
 msgstr ""
 
 #: ../libinfinity/common/inf-error.c:117
@@ -1690,7 +1689,7 @@ msgid "'status' attribute has invalid value"
 msgstr ""
 
 #: ../libinfinity/common/inf-error.c:129
-msgid "An unknown user error occured"
+msgid "An unknown user error occurred"
 msgstr ""
 
 #: ../libinfinity/common/inf-error.c:164
@@ -1734,7 +1733,7 @@ msgid "The node type is not supported by the server"
 msgstr ""
 
 #: ../libinfinity/common/inf-error.c:184
-#: ../libinfinity/server/infd-directory.c:5948
+#: ../libinfinity/server/infd-directory.c:5950
 msgid "The root node cannot be removed"
 msgstr ""
 
@@ -1755,7 +1754,7 @@ msgid "Connection is already subscribed to this session"
 msgstr ""
 
 #: ../libinfinity/common/inf-error.c:194
-#: ../libinfinity/server/infd-directory.c:6212
+#: ../libinfinity/server/infd-directory.c:6214
 msgid "The requesting connection is not subscribed to the session"
 msgstr ""
 
@@ -1832,11 +1831,11 @@ msgid "The ACL has not been queried"
 msgstr ""
 
 #: ../libinfinity/common/inf-error.c:232
-msgid "An unknown directory error has occured"
+msgid "An unknown directory error has occurred"
 msgstr ""
 
 #: ../libinfinity/common/inf-error.c:234 ../libinfinity/common/inf-error.c:277
-msgid "An error with unknown code has occured"
+msgid "An error with unknown code has occurred"
 msgstr ""
 
 #: ../libinfinity/common/inf-error.c:268
@@ -1967,14 +1966,14 @@ msgid "Expected end-of-sync message as last message during synchronization"
 msgstr ""
 
 #: ../libinfinity/common/inf-session.c:231
-msgid "An unknown synchronization error has occured"
+msgid "An unknown synchronization error has occurred"
 msgstr ""
 
 #. TODO: Add a possibilty for sub classes to register their error domains
 #. * that can occur in process_xml_sync. Maybe via a translate_error_sync
 #. * vfunc.
 #: ../libinfinity/common/inf-session.c:247
-msgid "An error with unknown error domain occured"
+msgid "An error with unknown error domain occurred"
 msgstr ""
 
 #: ../libinfinity/common/inf-session.c:937
@@ -2212,8 +2211,8 @@ msgstr ""
 
 #: ../libinfinity/common/inf-xmpp-connection.c:536
 msgid ""
-"The mechanism requsted by the initiating entity is weaker than server policy "
-"permits for that initiating entity"
+"The mechanism requested by the initiating entity is weaker than server "
+"policy permits for that initiating entity"
 msgstr ""
 
 #: ../libinfinity/common/inf-xmpp-connection.c:539
@@ -2229,7 +2228,7 @@ msgid ""
 msgstr ""
 
 #: ../libinfinity/common/inf-xmpp-connection.c:545
-msgid "An unknown authentication error has occured"
+msgid "An unknown authentication error has occurred"
 msgstr ""
 
 #: ../libinfinity/common/inf-xmpp-connection.c:1314
@@ -2401,7 +2400,7 @@ msgid "This server does not support creating accounts"
 msgstr ""
 
 #: ../libinfinity/server/infd-directory.c:3333
-#: ../libinfinity/server/infd-directory.c:11245
+#: ../libinfinity/server/infd-directory.c:11247
 #: ../libinfinity/server/infd-filesystem-account-storage.c:1264
 #: ../libinfinity/server/infd-filesystem-account-storage.c:1446
 #: ../libinfinity/server/infd-filesystem-account-storage.c:1560
@@ -2413,7 +2412,7 @@ msgstr ""
 msgid "This server does not support removing accounts"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:3730
+#: ../libinfinity/server/infd-directory.c:3732
 #, c-format
 msgid ""
 "Session \"%s\" could not be saved: %s\n"
@@ -2421,122 +2420,122 @@ msgid ""
 "server is shut down."
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:4254
+#: ../libinfinity/server/infd-directory.c:4256
 #, c-format
 msgid "Name \"%s\" is an invalid name: contains non-printable characters"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:4272
+#: ../libinfinity/server/infd-directory.c:4274
 #, c-format
 msgid "Name \"%s\" is an invalid name: contains only space characters"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:4285
+#: ../libinfinity/server/infd-directory.c:4287
 #, c-format
 msgid "Name \"%s\" is an invalid name: contains \"/\""
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:4300
+#: ../libinfinity/server/infd-directory.c:4302
 #, c-format
 msgid "A node with name \"%s\" exists already"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:5221
+#: ../libinfinity/server/infd-directory.c:5223
 #: ../libinfinity/server/infd-session-proxy.c:419
 msgid "Permission denied"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:5368
+#: ../libinfinity/server/infd-directory.c:5370
 #, c-format
 msgid "Failed to look up account: %s. Logging out user..."
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:5438
+#: ../libinfinity/server/infd-directory.c:5440
 msgid "No subscription request for the server chat"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:5457
+#: ../libinfinity/server/infd-directory.c:5459
 #, c-format
 msgid "No subscription request with ID %u"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:5524
+#: ../libinfinity/server/infd-directory.c:5526
 #, c-format
 msgid "Node with ID \"%u\" is not a subdirectory node"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:5536
+#: ../libinfinity/server/infd-directory.c:5538
 #, c-format
 msgid "Node with ID \"%u\" has unsupported type \"%s\""
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:5547
+#: ../libinfinity/server/infd-directory.c:5549
 #, c-format
 msgid "Node with ID \"%u\" is not a leaf node"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:6187
-#: ../libinfinity/server/infd-directory.c:11330
+#: ../libinfinity/server/infd-directory.c:6189
+#: ../libinfinity/server/infd-directory.c:11332
 msgid "No background storage available"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:6310
+#: ../libinfinity/server/infd-directory.c:6312
 msgid "The chat is disabled"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:6419
+#: ../libinfinity/server/infd-directory.c:6421
 msgid "No certificate request provided"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:6950
+#: ../libinfinity/server/infd-directory.c:6952
 msgid "The ACL for this node has already been queried"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:7037
+#: ../libinfinity/server/infd-directory.c:7039
 msgid "The ACL for this node has not been queried yet"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:7063
+#: ../libinfinity/server/infd-directory.c:7065
 msgid "The set-acl request does not have any ACL provided"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:7079
-#: ../libinfinity/server/infd-directory.c:10454
+#: ../libinfinity/server/infd-directory.c:7081
+#: ../libinfinity/server/infd-directory.c:10456
 msgid "This server does not support the requested permissions"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:7346
+#: ../libinfinity/server/infd-directory.c:7348
 msgid "The node to be subscribed to has been removed"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:7467
-#: ../libinfinity/server/infd-directory.c:7582
+#: ../libinfinity/server/infd-directory.c:7469
+#: ../libinfinity/server/infd-directory.c:7584
 msgid "The parent node of the node to be added has been removed"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:7667
+#: ../libinfinity/server/infd-directory.c:7669
 msgid "Client did not acknowledge initial subscription"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:7989
+#: ../libinfinity/server/infd-directory.c:7991
 #, c-format
 msgid "Failed to explore the root directory of the new storage: %s"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:8080
+#: ../libinfinity/server/infd-directory.c:8082
 #, c-format
 msgid ""
 "Failed to lookup account IDs on account storage change: %s. Demoting clients "
 "to default account."
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:8160
+#: ../libinfinity/server/infd-directory.c:8162
 #, c-format
 msgid "Failed to obtain account list from account storage: %s"
 msgstr ""
 
-#: ../libinfinity/server/infd-directory.c:8292
-#: ../libinfinity/server/infd-directory.c:8377
+#: ../libinfinity/server/infd-directory.c:8294
+#: ../libinfinity/server/infd-directory.c:8379
 #, c-format
 msgid "Failed to look up accounts in new account storage: %s"
 msgstr ""

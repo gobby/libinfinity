@@ -32,7 +32,7 @@
  * Each account is uniquely identified by an account ID, #InfAclAccount.id,
  * and is assigned a human-readable name, #InfAclAccount.name. Typically, most
  * operations can be performed with the ID, and for example permissions for
- * users are stored by refering to the account ID in #InfdDirectory. The
+ * users are stored by referring to the account ID in #InfdDirectory. The
  * authentication storage can be used to look up a name for the ID, and it is
  * responsible for storing the account information permanantly.
  *
@@ -262,7 +262,7 @@ infd_account_storage_lookup_accounts(InfdAccountStorage* storage,
  * If there is no account with the given name, the function returns %NULL and
  * sets @n_accounts to 0. If an error occurs, %NULL is returned, @n_accounts
  * is undefined, and @error is set. Therefore, to reliably find out whether a
- * lookup error occured or this is no account with the given name, a non-%NULL
+ * lookup error occurred or this is no account with the given name, a non-%NULL
  * error pointer should be passed and checked after the function call.
  *
  * Returns: (array length=n_accounts) (transfer full): An array of
@@ -547,7 +547,7 @@ infd_account_storage_login_by_password(InfdAccountStorage* storage,
  * infd_account_storage_get_support().
  *
  * Returns: %TRUE if the operation was successful or %FALSE if an error
- * occured.
+ * occurred.
  */
 gboolean
 infd_account_storage_set_certificate(InfdAccountStorage* storage,

@@ -1490,7 +1490,7 @@ inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
    * inserting text behind the end of the document). If such an error occurs
    * then @request is the same as the one in the
    * %InfAdoptedAlgorithm::begin-execute-request emission, @translated may or
-   * may not be %NULL and @error contains information on the error occured.
+   * may not be %NULL and @error contains information on the error occurred.
    */
   algorithm_signals[END_EXECUTE_REQUEST] = g_signal_new(
     "end-execute-request",
@@ -2092,7 +2092,7 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
 
   /* The "upper related" request of a request A is the next-newer request so
    * that all requests before the "upper related" request can be removed
-   * without any remaining request in the log still refering to a removed
+   * without any remaining request in the log still referring to a removed
    * one. See also inf_adopted_request_log_upper_related(). */
 
   /* Note that we could be more intelligent here. It would be enough if the

@@ -472,7 +472,7 @@ inf_user_status_to_string(InfUserStatus status)
  * untouched, @error is set and %FALSE is returned. Otherwise, the function
  * returns %TRUE.
  *
- * Returns: When an error occured during the conversion, %FALSE is returned,
+ * Returns: When an error occurred during the conversion, %FALSE is returned,
  * and %TRUE otherwise.
  */
 gboolean

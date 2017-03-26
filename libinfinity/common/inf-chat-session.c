@@ -91,9 +91,9 @@ inf_chat_session_strerror(InfChatSessionError code)
   case INF_CHAT_SESSION_ERROR_NO_SUCH_USER:
     return _("A user with the requested ID does not exist");
   case INF_CHAT_SESSION_ERROR_FAILED:
-    return _("An unknown chat session error has occured");
+    return _("An unknown chat session error has occurred");
   default:
-    return _("An error with unknown error code occured");
+    return _("An error with unknown error code occurred");
   }
 }
 #endif

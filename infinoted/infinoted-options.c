@@ -124,7 +124,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
     offsetof(InfinotedOptions, root_directory),
     infinoted_parameter_convert_filename,
     'r',
-    N_("The directory which infinoted uses to permanantly store all "
+    N_("The directory which infinoted uses to permanently store all "
        "documents on the server, and where they are read from after a "
        "server restart. [Default=~/.infinote]"),
     N_("DIRECTORY")
@@ -284,7 +284,7 @@ infinoted_options_validate(InfinotedOptions* options,
       INFINOTED_OPTIONS_ERROR_EMPTY_CERTIFICATE_FILE,
       _("No certificate file given. If you don't have a suitable certificate "
         "file, either create one using the --create-certificate command line "
-        "agument, or disable TLS via by setting the security policy to "
+        "argument, or disable TLS via by setting the security policy to "
         "\"no-tls\".")
     );
 

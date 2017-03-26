@@ -2577,7 +2577,7 @@ infc_browser_get_add_node_request_from_xml(InfcBrowser* browser,
         error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_INVALID_SEQ,
-        _("The request contains a sequence number refering to a request of "
+        _("The request contains a sequence number referring to a request of "
           "type '%s', but a request of either 'explore-node' or 'add-node' "
           "was expected."),
         type
@@ -3439,8 +3439,8 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
         }
         else
         {
-          /* Note that all the errors which could have occured up to this
-           * point are the server's fault. If one of those occured, then the
+          /* Note that all the errors which could have occurred up to this
+           * point are the server's fault. If one of those occurred, then the
            * server sent us crap and could have known better. We therefore
            * don't reply with subscribe-nack on these errors. */
 
@@ -4793,7 +4793,7 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
         error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_INVALID_SEQ,
-        _("The request contains a sequence number refering to a request of "
+        _("The request contains a sequence number referring to a request of "
           "type '%s', but a request of either 'query-acl' or 'set-acl' "
           "was expected."),
         request_type

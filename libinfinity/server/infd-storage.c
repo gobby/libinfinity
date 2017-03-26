@@ -245,7 +245,7 @@ infd_storage_acl_list_free(GSList* node_list)
  *
  * Returns: (transfer full) (element-type InfdStorageNode) (allow-none): A
  * #GSList that contains #InfdStorageNode objects, or %NULL if either the
- * subdirectory is empty or an error occured.
+ * subdirectory is empty or an error occurred.
  **/
 GSList*
 infd_storage_read_subdirectory(InfdStorage* storage,

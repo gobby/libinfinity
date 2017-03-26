@@ -1334,7 +1334,7 @@ inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
   /**
    * InfTcpConnection::sent:
    * @connection: The #InfTcpConnection through which the data has been sent.
-   * @data: A #gpointer refering to the data that has been sent.
+   * @data: A #gpointer referring to the data that has been sent.
    * @length: A #guint holding the number of bytes that has been sent.
    *
    * This signal is emitted whenever data has been sent over the connection.
@@ -1356,7 +1356,7 @@ inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
    * InfTcpConnection::received:
    * @connection: The #InfTcpConnection through which the data has been
    * received.
-   * @data: A #gpointer refering to the data that has been received.
+   * @data: A #gpointer referring to the data that has been received.
    * @length: A #guint holding the number of bytes that has been received.
    *
    * This signal is emitted whenever data has been received from the
@@ -1380,7 +1380,7 @@ inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
    * @connection: The erroneous #InfTcpConnection.
    * @error: A pointer to a #GError object with details on the error.
    *
-   * This signal is emitted when an error occured with the connection. If the
+   * This signal is emitted when an error occurred with the connection. If the
    * error is fatal, the connection will change its status to
    * %INF_TCP_CONNECTION_CLOSED.
    */
@@ -1523,7 +1523,7 @@ inf_tcp_connection_new_resolve(InfIo* io,
  * error occurs while the connection is being opened, the "error" signal
  * is emitted.
  *
- * Returns: %FALSE if an error occured and %TRUE otherwise.
+ * Returns: %FALSE if an error occurred and %TRUE otherwise.
  **/
 gboolean
 inf_tcp_connection_open(InfTcpConnection* connection,

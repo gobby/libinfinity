@@ -1098,7 +1098,7 @@ inf_standalone_io_new(void)
  * @io: A #InfStandaloneIo.
  *
  * Performs a single iteration of @io. The call will block until a first
- * event has occured. Then, it will process that event and return.
+ * event has occurred. Then, it will process that event and return.
  **/
 void
 inf_standalone_io_iteration(InfStandaloneIo* io)
@@ -1125,7 +1125,7 @@ inf_standalone_io_iteration(InfStandaloneIo* io)
  * @timeout: Maximum number of milliseconds to block.
  *
  * Performs a single iteration of @io. The call will block until either an
- * event occured or @timeout milliseconds have elapsed. If an event occured,
+ * event occurred or @timeout milliseconds have elapsed. If an event occurred,
  * the event will be processed before returning.
  **/
 void

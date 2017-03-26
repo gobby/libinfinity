@@ -128,7 +128,7 @@ error_cb(InfdTcpServer* server,
          GError* error,
          gpointer user_data)
 {
-  fprintf(stderr, "Error occured: %s\n", error->message);
+  fprintf(stderr, "Error occurred: %s\n", error->message);
   if(inf_standalone_io_loop_running(INF_STANDALONE_IO(user_data)))
     inf_standalone_io_loop_quit(INF_STANDALONE_IO(user_data));
 }

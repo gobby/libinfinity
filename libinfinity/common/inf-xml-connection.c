@@ -89,7 +89,7 @@ inf_xml_connection_default_init(InfXmlConnectionInterface* iface)
   /**
    * InfXmlConnection::sent:
    * @connection: The #InfXmlConnection through which @node has been sent 
-   * @node: An #xmlNodePtr refering to the XML node that has been sent
+   * @node: An #xmlNodePtr referring to the XML node that has been sent
    *
    * Signal which is emitted when an XML node has been successfully
    * transmitted with this connection.
@@ -109,7 +109,7 @@ inf_xml_connection_default_init(InfXmlConnectionInterface* iface)
   /**
    * InfXmlConnection::received:
    * @connection: The #InfXmlConnection through which @node has been received
-   * @node: An #xmlNodePtr refering to the XML node that has been received
+   * @node: An #xmlNodePtr referring to the XML node that has been received
    *
    * Signal which is emitted when an XML node has been received by this
    * connection.
@@ -341,7 +341,7 @@ void inf_xml_connection_received(InfXmlConnection* connection,
 /**
  * inf_xml_connection_error:
  * @connection: A #InfXmlConnection.
- * @error: The error that occured.
+ * @error: The error that occurred.
  *
  * Emits the "error" signal on @connection. This will most likely only
  * be useful to implementors.
