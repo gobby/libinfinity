@@ -291,6 +291,29 @@ fi
 
 AM_CONDITIONAL([LIBINFINITY_HAVE_LIBDAEMON], test "x$use_libdaemon" = "xyes")
 
+########################
+# Check for libsystemd #
+########################
+
+AC_ARG_WITH([libsystemd], AS_HELP_STRING([--with-libsystemd],
+	    [Enables sd_notify support in infinoted [[default=auto]]]),
+	    [use_libsystemd=$withval], [use_libsystemd=auto])
+
+if test "x$use_libsystemd" = "xauto"
+then
+  PKG_CHECK_MODULES([libsystemd], [libsystemd], [use_libsystemd=yes], [use_libsystemd=no])
+elif test "x$use_libsystemd" = "xyes"
+then
+  PKG_CHECK_MODULES([libsystemd], [libsystemd])
+fi
+
+if test "x$use_libsystemd" = "xyes"
+then
+  AC_DEFINE([LIBINFINITY_HAVE_LIBSYSTEMD], 1, [Whether libsystemd support is enabled])
+fi
+
+AM_CONDITIONAL([LIBINFINITY_HAVE_LIBSYSTEMD], test "x$use_libsystemd" = "xyes")
+
 #################
 # Check for pam #
 #################
@@ -402,6 +425,7 @@ Build optional packages:
 Enable support for:
   avahi: $use_avahi
   libdaemon: $use_libdaemon
+  libsystemd: $use_libsystemd
   pam: $use_pam
 "
 

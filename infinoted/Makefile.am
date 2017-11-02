@@ -59,7 +59,8 @@ infinoted_0_7_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infinoted_LIBS) \
 	$(infinity_LIBS) \
-	$(libdaemon_LIBS)
+	$(libdaemon_LIBS) \
+	$(libsystemd_LIBS)
 
 infinoted_0_7_SOURCES = \
 	infinoted-config-reload.c \

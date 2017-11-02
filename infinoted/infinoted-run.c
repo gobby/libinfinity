@@ -31,6 +31,10 @@
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-config.h>
 
+#ifdef LIBINFINITY_HAVE_LIBSYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
+
 static const guint8 INFINOTED_RUN_IPV6_ANY_ADDR[16] =
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
@@ -466,6 +470,12 @@ infinoted_run_start(InfinotedRun* run)
   /* Make sure messages are shown. This explicit flush is for example
    * required when running in an MSYS shell on Windows. */
   fflush(stderr);
+
+#ifdef LIBINFINITY_HAVE_LIBSYSTEMD
+  /* Here we are ready to serve. If enabled, signal systemd to consider
+   * the server to be started. */
+  sd_notify(0, "READY=1");
+#endif
 
   if(run->xmpp4 != NULL || run->xmpp6 != NULL)
   {

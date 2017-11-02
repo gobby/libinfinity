@@ -27,5 +27,8 @@
 /* Whether libdaemon support is enabled */
 #undef LIBINFINITY_HAVE_LIBDAEMON
 
+/* Whether libsystemd support is enabled */
+#undef LIBINFINITY_HAVE_LIBSYSTEMD
+
 /* Whether pam support is enabled */
 #undef LIBINFINITY_HAVE_PAM
