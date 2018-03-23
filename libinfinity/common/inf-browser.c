@@ -52,6 +52,10 @@ static const GEnumValue inf_browser_status_values[] = {
     INF_BROWSER_OPEN,
     "INF_BROWSER_OPEN",
     "open"
+  }, {
+    0,
+    NULL,
+    NULL
   }
 };
 
