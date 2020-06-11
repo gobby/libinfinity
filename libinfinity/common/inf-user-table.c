@@ -36,15 +36,11 @@
  * users within the session.
  */
 
-typedef struct _InfUserTableForeachUserData InfUserTableForeachUserData;
-struct _InfUserTableForeachUserData {
-  InfUserTableForeachUserFunc func;
-  gpointer user_data;
-};
-
 typedef struct _InfUserTablePrivate InfUserTablePrivate;
 struct _InfUserTablePrivate {
   GHashTable* table;
+  /* To be able to iterate users in sorted order */
+  GSList* user_ids;
   /* TODO: It would be smarter to map the hash table to a helper struct
    * which stores the user availability, locality and the InfUser object */
   GSList* availables;
@@ -179,15 +175,11 @@ inf_user_table_lookup_user_by_name_func(gpointer key,
   return FALSE;
 }
 
-static void
-inf_user_table_foreach_user_func(gpointer key,
-                                 gpointer value,
-                                 gpointer user_data)
+static gint
+inf_user_ids_list_sort_compare_func(gconstpointer a,
+                                    gconstpointer b)
 {
-  InfUserTableForeachUserData* data;
-  data = (InfUserTableForeachUserData*)user_data;
-
-  data->func(INF_USER(value), data->user_data);
+  return GPOINTER_TO_UINT(a) - GPOINTER_TO_UINT(b);
 }
 
 static void
@@ -197,6 +189,7 @@ inf_user_table_init(InfUserTable* user_table)
   priv = INF_USER_TABLE_PRIVATE(user_table);
 
   priv->table = g_hash_table_new_full(NULL, NULL, NULL, NULL);
+  priv->user_ids = NULL;
   priv->availables = NULL;
   priv->locals = NULL;
 }
@@ -215,6 +208,9 @@ inf_user_table_dispose(GObject* object)
 
   g_slist_free(priv->availables);
   priv->availables = NULL;
+
+  g_slist_free(priv->user_ids);
+  priv->user_ids = NULL;
 
   g_hash_table_foreach(
     priv->table,
@@ -255,6 +251,12 @@ inf_user_table_add_user_handler(InfUserTable* user_table,
 
   g_hash_table_insert(priv->table, GUINT_TO_POINTER(id), user);
   g_object_ref(user);
+
+  priv->user_ids = g_slist_insert_sorted(
+    priv->user_ids,
+    GUINT_TO_POINTER(id),
+    inf_user_ids_list_sort_compare_func
+  );
 
   g_signal_connect(
     G_OBJECT(user),
@@ -313,6 +315,8 @@ inf_user_table_remove_user_handler(InfUserTable* user_table,
       user
     );
   }
+
+  priv->user_ids = g_slist_remove(priv->user_ids, GUINT_TO_POINTER(id));
 
   inf_user_table_unref_user(user_table, user);
   g_assert(g_hash_table_lookup(priv->table, GUINT_TO_POINTER(id)) == user);
@@ -646,21 +650,22 @@ inf_user_table_foreach_user(InfUserTable* user_table,
                             gpointer user_data)
 {
   InfUserTablePrivate* priv;
-  InfUserTableForeachUserData data;
+  InfUser* user;
+  GSList* item;
+
+  guint user_id;
 
   g_return_if_fail(INF_IS_USER_TABLE(user_table));
   g_return_if_fail(func != NULL);
 
   priv = INF_USER_TABLE_PRIVATE(user_table);
 
-  data.func = func;
-  data.user_data = user_data;
-
-  g_hash_table_foreach(
-    priv->table,
-    inf_user_table_foreach_user_func,
-    &data
-  );
+  for(item = priv->user_ids; item != NULL; item = g_slist_next(item))
+  {
+    user_id = GPOINTER_TO_UINT(item->data);
+    user = inf_user_table_lookup_user_by_id(user_table, user_id);
+    func(user, user_data);
+  }
 }
 
 /**
