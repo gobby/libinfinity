@@ -36,12 +36,6 @@
  * users within the session.
  */
 
-typedef struct _InfUserTableForeachUserData InfUserTableForeachUserData;
-struct _InfUserTableForeachUserData {
-  InfUserTableForeachUserFunc func;
-  gpointer user_data;
-};
-
 typedef struct _InfUserTablePrivate InfUserTablePrivate;
 struct _InfUserTablePrivate {
   GHashTable* table;
@@ -179,15 +173,11 @@ inf_user_table_lookup_user_by_name_func(gpointer key,
   return FALSE;
 }
 
-static void
-inf_user_table_foreach_user_func(gpointer key,
-                                 gpointer value,
-                                 gpointer user_data)
+static gint
+inf_user_ids_list_sort_compare_func(gconstpointer a,
+                                    gconstpointer b)
 {
-  InfUserTableForeachUserData* data;
-  data = (InfUserTableForeachUserData*)user_data;
-
-  data->func(INF_USER(value), data->user_data);
+  return GPOINTER_TO_UINT(a) - GPOINTER_TO_UINT(b);
 }
 
 static void
@@ -646,21 +636,29 @@ inf_user_table_foreach_user(InfUserTable* user_table,
                             gpointer user_data)
 {
   InfUserTablePrivate* priv;
-  InfUserTableForeachUserData data;
+  GList* user_ids_list;
+  GList* item;
+  InfUser* user;
+
+  guint user_id;
 
   g_return_if_fail(INF_IS_USER_TABLE(user_table));
   g_return_if_fail(func != NULL);
 
   priv = INF_USER_TABLE_PRIVATE(user_table);
 
-  data.func = func;
-  data.user_data = user_data;
-
-  g_hash_table_foreach(
-    priv->table,
-    inf_user_table_foreach_user_func,
-    &data
+  user_ids_list = g_hash_table_get_keys(priv->table);
+  user_ids_list = g_list_sort(
+    user_ids_list,
+    inf_user_ids_list_sort_compare_func
   );
+  for(item = user_ids_list; item != NULL; item = g_list_next(item))
+  {
+    user_id = GPOINTER_TO_UINT(item->data);
+    user = inf_user_table_lookup_user_by_id(user_table, user_id);
+    func(user, user_data);
+  }
+  g_list_free(user_ids_list);
 }
 
 /**
