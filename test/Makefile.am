@@ -24,8 +24,14 @@ noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
 	inf-test-text-operations inf-test-text-session \
 	inf-test-text-cleanup inf-test-text-recover \
 	inf-test-text-replay inf-test-reduce-replay inf-test-mass-join \
-	inf-test-text-fixline inf-test-traffic-replay \
+	inf-test-text-fixline \
 	inf-test-certificate-validate inf-test-text-quick-write
+
+if !WIN32
+# inf-test-traffic-replay currently uses getline and strptime, which
+# do not exist on Windows.
+noinst_PROGRAMS += inf-test-traffic-replay
+endif
 
 if WITH_INFTEXTGTK
 noinst_PROGRAMS += inf-test-gtk-browser
