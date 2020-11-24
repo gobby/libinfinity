@@ -1,3 +1,11 @@
+libinfinity 0.7.2:
+
+	* Fix user table iteration order to be deterministic, possibly fixing
+          on out-of-sync bug. (Sunil Mohan Adapa, #22)
+	* Fix a possible crash when running g-ir-scanner. (James Clarke)
+	* infinoted: Add support for notifying systemd when the service is
+	  running.
+
 libinfinity 0.7.1:
 
 	* Fix a possible crash when uploading a document to the infinoted
