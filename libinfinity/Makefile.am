@@ -298,8 +298,8 @@ typelib_DATA = InfGnutls-3.0.typelib InfGsasl-1.0.typelib Infinity-0.7.typelib I
 CLEANFILES = \
 	$(INTROSPECTION_GIRS) \
 	$(typelib_DATA)
+endif
 
 EXTRA_DIST = \
 	InfGnutls-3.0.gir \
 	InfGsasl-1.0.gir
-endif
