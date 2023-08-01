@@ -105,6 +105,7 @@ AC_TRY_COMPILE([#include <dirent.h>
 AC_MSG_CHECKING(for O_NOFOLLOW)
 AC_TRY_COMPILE([#include <sys/types.h>
                 #include <sys/stat.h>
+                #include <stdio.h>
                 #include <fcntl.h> ],
                [ printf("%d\n", O_NOFOLLOW); ],
                [ AC_MSG_RESULT(yes)
