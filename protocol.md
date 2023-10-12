@@ -5,7 +5,7 @@
 Before starting, we recommend to get familiar with some of the terminology that is used in this protocol specification.
 
 * Host: In fact, a host is referred to an instance of the program implementing the Infinote protocol. If there are multiple instances running on the same computer, then these are referred to as multiple hosts, for simplicity.
-Directory: Each Infinote server maintains an hierarchical tree of documents, called its *Directory*.
+* Directory: Each Infinote server maintains an hierarchical tree of documents, called its *Directory*.
 * Node: An entry in a server's directory. A node can be either a subdirectory node, or a session node. A subdirectory node can contain more nodes, whereas a session node is a leaf of the tree.
 * Exploration: A client can *explore* a subdirectory node of a server. This involves the server sending the subdirectory's contents to the client and notifying it of changes, in case nodes are added or removed in that subdirectory.
 * Session: For each session node, there is a corresponding *Session*. A session allows multiple hosts to collaboratively modify a document.
@@ -49,7 +49,7 @@ The following communication methods are currently defined. Each communication me
 
 The central method is a very simple communication method which is supported for all networks. Each host maintains only a single connection to the publisher, and the publisher maintains a connection to each other host. Hosts can only send messages to the publisher, and if the message is a group message, then the publisher relays the message to all other hosts. Therefore, if the publishing host goes down, no communication is possible anymore within the group.
 
-An XML message being sent with the central method is sent as a child of the top-level <group/> message. On the top-level, only <group> are allowed. They have two attributes namely "name" and "publisher", which identify the group the message belongs to. "name" contains the group name and "publisher" the network ID of the host that published the group. "publisher" can also be one of "me" or "you" in which case the sending or receiving host is referred to as the group publisher, respectively. If no publisher is given, then "me" is assumed.
+An XML message being sent with the central method is sent as a child of the top-level `<group/>` message. On the top-level, only `<group>` are allowed. They have two attributes namely "name" and "publisher", which identify the group the message belongs to. "name" contains the group name and "publisher" the network ID of the host that published the group. "publisher" can also be one of "me" or "you" in which case the sending or receiving host is referred to as the group publisher, respectively. If no publisher is given, then "me" is assumed.
 
 Example 1:
 
