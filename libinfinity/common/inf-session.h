@@ -216,6 +216,7 @@ struct _InfSessionClass {
                                InfXmlConnection* conn,
                                xmlNodePtr xml);
 
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
   void (*set_xml_user_props)(InfSession* session,
                              const GParameter* params,
                              guint n_params,
@@ -230,6 +231,7 @@ struct _InfSessionClass {
   InfUser*(*user_new)(InfSession* session,
                       GParameter* params,
                       guint n_params);
+  G_GNUC_END_IGNORE_DEPRECATIONS
 
   /* Signals */
   void(*close)(InfSession* session);
@@ -265,6 +267,7 @@ struct _InfSession {
   GObject parent;
 };
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 const GParameter*
 inf_session_lookup_user_property(const GParameter* params,
                                  guint n_params,
@@ -273,6 +276,7 @@ inf_session_lookup_user_property(const GParameter* params,
 GParameter*
 inf_session_get_user_property(GArray* array,
                               const gchar* name);
+G_GNUC_END_IGNORE_DEPRECATIONS
 
 GType
 inf_session_status_get_type(void) G_GNUC_CONST;
@@ -300,10 +304,12 @@ inf_session_get_user_table(InfSession* session);
 InfSessionStatus
 inf_session_get_status(InfSession* session);
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 InfUser*
 inf_session_add_user(InfSession* session,
                      const GParameter* params,
                      guint n_params);
+G_GNUC_END_IGNORE_DEPRECATIONS
 
 void
 inf_session_set_user_status(InfSession* session,

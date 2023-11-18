@@ -55,22 +55,26 @@ struct _InfSessionProxyInterface {
   /* Signals */
 
   /*< public >*/
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
   InfRequest* (*join_user)(InfSessionProxy* proxy,
                            guint n_params,
                            const GParameter* params,
                            InfRequestFunc func,
                            gpointer user_data);
+  G_GNUC_END_IGNORE_DEPRECATIONS
 };
 
 GType
 inf_session_proxy_get_type(void) G_GNUC_CONST;
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 InfRequest*
 inf_session_proxy_join_user(InfSessionProxy* proxy,
                             guint n_params,
                             const GParameter* params,
                             InfRequestFunc func,
                             gpointer user_data);
+G_GNUC_END_IGNORE_DEPRECATIONS
 
 G_END_DECLS
 
