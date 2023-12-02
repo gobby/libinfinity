@@ -315,6 +315,29 @@ fi
 
 AM_CONDITIONAL([LIBINFINITY_HAVE_LIBSYSTEMD], test "x$use_libsystemd" = "xyes")
 
+########################
+# Check for libsoup    #
+########################
+
+AC_ARG_WITH([libsoup], AS_HELP_STRING([--with-libsoup],
+	    [Enables the HTTP plugin in infinoted [[default=auto]]]),
+	    [use_libsoup=$withval], [use_libsoup=auto])
+
+if test "x$use_libsoup" = "xauto"
+then
+  PKG_CHECK_MODULES([libsoup], [libsoup-3.0], [use_libsoup=yes], [use_libsoup=no])
+elif test "x$use_libsoup" = "xyes"
+then
+  PKG_CHECK_MODULES([libsoup], [libsoup-3.0])
+fi
+
+if test "x$use_libsoup" = "xyes"
+then
+  AC_DEFINE([LIBINFINITY_HAVE_LIBSOUP], 1, [Whether HTTP support is enabled])
+fi
+
+AM_CONDITIONAL([LIBINFINITY_HAVE_LIBSOUP], test "x$use_libsoup" = "xyes")
+
 #################
 # Check for pam #
 #################
@@ -427,6 +450,7 @@ Enable support for:
   avahi: $use_avahi
   libdaemon: $use_libdaemon
   libsystemd: $use_libsystemd
+  libsoup: $use_libsoup
   pam: $use_pam
 "
 

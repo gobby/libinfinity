@@ -1,11 +1,18 @@
+conditional_plugins =
+
 if !WIN32
-nonwin_plugins = \
+conditional_plugins += \
 	libinfinoted-plugin-document-stream.la
 
 if LIBINFINITY_HAVE_GIO
-nonwin_plugins += \
+conditional_plugins += \
 	libinfinoted-plugin-dbus.la
 endif
+endif
+
+if LIBINFINITY_HAVE_LIBSOUP
+conditional_plugins += \
+	libinfinoted-plugin-http.la
 endif
 
 plugin_LTLIBRARIES = \
@@ -19,7 +26,7 @@ plugin_LTLIBRARIES = \
 	libinfinoted-plugin-record.la \
 	libinfinoted-plugin-traffic-logging.la \
 	libinfinoted-plugin-transformation-protection.la \
-	$(nonwin_plugins)
+	$(conditional_plugins)
 
 plugindir = ${libdir}/infinoted-$(LIBINFINITY_API_VERSION)/plugins
 
@@ -28,7 +35,8 @@ AM_CPPFLAGS = \
 	$(infinoted_CFLAGS) \
 	$(inftext_CFLAGS) \
 	$(infinity_CFLAGS) \
-	$(gio_CFLAGS)
+	$(gio_CFLAGS) \
+	$(libsoup_CFLAGS)
 
 AM_LDFLAGS = \
 	-avoid-version -module -no-undefined
@@ -125,9 +133,17 @@ libinfinoted_plugin_dbus_la_LIBADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infinoted_LIBS) \
 	$(inftext_LIBS) \
-	$(infinity_LIBS) \
-	$(gio_LIBS)
+	$(infinity_LIBS)
 endif
+endif
+
+if LIBINFINITY_HAVE_LIBSOUP
+libinfinoted_plugin_http_la_LIBADD = \
+	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	$(infinoted_LIBS) \
+	$(infinity_LIBS) \
+	$(libsoup_LIBS)
 endif
 
 libinfinoted_plugin_autosave_la_SOURCES = \
@@ -172,4 +188,9 @@ libinfinoted_plugin_dbus_la_SOURCES = \
 	util/infinoted-plugin-util-navigate-browser.c \
 	infinoted-plugin-dbus.c
 endif
+endif
+
+if LIBINFINITY_HAVE_LIBSOUP
+libinfinoted_plugin_http_la_SOURCES = \
+	infinoted-plugin-http.c
 endif
