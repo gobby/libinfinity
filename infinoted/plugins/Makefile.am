@@ -192,5 +192,7 @@ endif
 
 if LIBINFINITY_HAVE_LIBSOUP
 libinfinoted_plugin_http_la_SOURCES = \
+	http/infinoted-plugin-http-websocket-connection.h \
+	http/infinoted-plugin-http-websocket-connection.c \
 	infinoted-plugin-http.c
 endif
