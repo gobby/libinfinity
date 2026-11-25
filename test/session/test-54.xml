@@ -32,6 +32,6 @@
  </request>
 
  <final-buffer>
-  <segment author="1">ab</segment>
+  <segment author="0">ab</segment>
  </final-buffer>
 </infinote-test>
